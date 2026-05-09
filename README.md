@@ -74,3 +74,24 @@ docker compose up --build
   - 在线状态、综合搜索、搜索历史和推荐系统
   - 环境变量化配置、Actuator 健康检查、Docker/Compose 部署骨架
   - 认证基础单元测试
+
+## Broad Smoke Test
+
+Run this after PostgreSQL, Redis, Kafka, and the backend are available. The script creates unique temporary users and covers auth, profiles, friends, private chat, group chat, Phase 5 social search/recommendations, moments, notifications, and password flows.
+
+```bash
+node scripts/e2e-smoke.mjs
+```
+
+Optional environment variables:
+
+```bash
+API_BASE_URL=http://localhost:8083/api/v1 node scripts/e2e-smoke.mjs
+SMOKE_CONTINUE=1 node scripts/e2e-smoke.mjs
+```
+
+PowerShell example:
+
+```powershell
+$env:API_BASE_URL='http://localhost:8083/api/v1'; node scripts/e2e-smoke.mjs
+```
