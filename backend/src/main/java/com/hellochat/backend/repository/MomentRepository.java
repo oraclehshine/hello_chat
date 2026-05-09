@@ -1,6 +1,7 @@
 package com.hellochat.backend.repository;
 
 import com.hellochat.backend.entity.Moment;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -122,4 +123,6 @@ public interface MomentRepository extends JpaRepository<Moment, Long> {
           and m.deletedAt is null
         """)
     MomentProfileSummaryProjection summarizeByAuthorId(@Param("authorId") Long authorId);
+
+    List<Moment> findTop100ByDeletedAtIsNullAndTagsIsNotNullOrderByCreatedAtDesc();
 }

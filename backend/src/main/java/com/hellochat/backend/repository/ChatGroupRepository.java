@@ -9,6 +9,8 @@ public interface ChatGroupRepository extends JpaRepository<ChatGroup, Long> {
 
     Page<ChatGroup> findByNameContainingIgnoreCaseAndStatus(String keyword, Integer status, Pageable pageable);
 
+    Page<ChatGroup> findByStatusOrderByCreatedAtDesc(Integer status, Pageable pageable);
+
     boolean existsByInviteCode(String inviteCode);
 
     java.util.Optional<ChatGroup> findByInviteCodeAndStatus(String inviteCode, Integer status);

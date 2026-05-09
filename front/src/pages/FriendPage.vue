@@ -10,11 +10,27 @@
       </header>
 
       <section class="friend-card">
-        <h3>Add friend</h3>
+        <h3>Presence</h3>
+        <select v-model="presenceStatus" @change="() => savePresence()">
+          <option value="online">Online</option>
+          <option value="offline">Offline</option>
+          <option value="busy">Busy</option>
+          <option value="invisible">Invisible</option>
+        </select>
+        <small v-if="presence">Last active {{ formatTime(presence.lastActiveAt) }}</small>
+      </section>
+
+      <section class="friend-card">
+        <h3>Social search</h3>
         <div class="search-row">
-          <input v-model="keyword" type="search" placeholder="Search email or nickname" @keyup.enter="handleSearch" />
+          <input v-model="keyword" type="search" placeholder="Search users or groups" @keyup.enter="handleSearch" />
           <button class="secondary-btn compact" :disabled="searching" @click="handleSearch">
             {{ searching ? '...' : 'Search' }}
+          </button>
+        </div>
+        <div v-if="searchHistory.length" class="history-list">
+          <button v-for="item in searchHistory" :key="item.historyId" type="button" @click="searchFromHistory(item.keyword)">
+            {{ item.keyword }}
           </button>
         </div>
         <div v-if="searchResults.length" class="user-list">
@@ -27,6 +43,39 @@
               <strong>{{ user.nickname || user.email }}</strong>
               <small>{{ user.email }}</small>
             </span>
+          </button>
+        </div>
+        <div v-if="groupResults.length" class="request-list">
+          <article v-for="group in groupResults" :key="group.groupId">
+            <strong>{{ group.groupName }}</strong>
+            <p>{{ group.description || `${group.memberCount} members` }}</p>
+            <button @click="requestGroup(group.groupId)">Request join</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="friend-card">
+        <h3>Recommendations</h3>
+        <div v-if="recommendedFriends.length" class="user-list">
+          <button v-for="user in recommendedFriends" :key="user.userId" type="button" @click="requestFriend(user)">
+            <span class="avatar">
+              <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" />
+              <span v-else>{{ initials(user.nickname || user.email) }}</span>
+            </span>
+            <span>
+              <strong>{{ user.nickname || user.email }}</strong>
+              <small>{{ user.email }}</small>
+            </span>
+          </button>
+        </div>
+        <div v-if="recommendedGroups.length" class="topic-list">
+          <button v-for="group in recommendedGroups" :key="group.groupId" type="button" @click="requestGroup(group.groupId)">
+            {{ group.groupName }}
+          </button>
+        </div>
+        <div v-if="recommendedTopics.length" class="topic-list">
+          <button v-for="topic in recommendedTopics" :key="topic.tag" type="button" @click="searchTopic(topic.tag)">
+            #{{ topic.tag }} {{ topic.momentCount }}
           </button>
         </div>
       </section>
@@ -106,7 +155,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { searchUsers, type UserSearchItem } from '../api/chat'
+import type { UserSearchItem } from '../api/chat'
+import { requestJoinGroup, type GroupSummary } from '../api/group'
 import {
   approveFriendRequest,
   blockUser,
@@ -123,12 +173,28 @@ import {
   type Friend,
   type FriendRequest,
 } from '../api/friend'
+import {
+  listRecommendations,
+  listSearchHistory,
+  socialSearch,
+  updatePresence,
+  type Presence,
+  type SearchHistory,
+  type TopicRecommendation,
+} from '../api/social'
 
 const friends = ref<Friend[]>([])
 const receivedRequests = ref<FriendRequest[]>([])
 const sentRequests = ref<FriendRequest[]>([])
 const blockedUsers = ref<BlockedUser[]>([])
 const searchResults = ref<UserSearchItem[]>([])
+const groupResults = ref<GroupSummary[]>([])
+const searchHistory = ref<SearchHistory[]>([])
+const recommendedFriends = ref<UserSearchItem[]>([])
+const recommendedGroups = ref<GroupSummary[]>([])
+const recommendedTopics = ref<TopicRecommendation[]>([])
+const presence = ref<Presence | null>(null)
+const presenceStatus = ref<Presence['status']>('online')
 const keyword = ref('')
 const notice = ref('')
 const loading = ref(false)
@@ -159,6 +225,7 @@ async function loadAll() {
     receivedRequests.value = received
     sentRequests.value = sent
     blockedUsers.value = blocks
+    await Promise.all([loadSearchHistory(), loadRecommendations(), savePresence(false)])
   } catch (error) {
     notice.value = error instanceof Error ? error.message : 'Load friends failed'
   } finally {
@@ -172,14 +239,27 @@ async function handleSearch() {
   notice.value = ''
   try {
     const friendIds = new Set(friends.value.map((friend) => friend.userId))
-    searchResults.value = (await searchUsers(keyword.value.trim())).filter(
+    const result = await socialSearch(keyword.value.trim())
+    searchResults.value = result.users.filter(
       (user) => user.userId !== currentUserId.value && !friendIds.has(user.userId),
     )
+    groupResults.value = result.groups
+    searchHistory.value = await listSearchHistory()
   } catch (error) {
     notice.value = error instanceof Error ? error.message : 'Search failed'
   } finally {
     searching.value = false
   }
+}
+
+async function searchFromHistory(value: string) {
+  keyword.value = value
+  await handleSearch()
+}
+
+async function searchTopic(tag: string) {
+  keyword.value = `#${tag}`
+  await handleSearch()
 }
 
 async function requestFriend(user: UserSearchItem) {
@@ -193,6 +273,39 @@ async function requestFriend(user: UserSearchItem) {
   } catch (error) {
     notice.value = error instanceof Error ? error.message : 'Send request failed'
   }
+}
+
+async function requestGroup(groupId: number) {
+  const message = window.prompt('Join request message', '')
+  if (message === null) return
+  try {
+    await requestJoinGroup(groupId, message)
+    groupResults.value = groupResults.value.filter((group) => group.groupId !== groupId)
+    recommendedGroups.value = recommendedGroups.value.filter((group) => group.groupId !== groupId)
+    notice.value = 'Group join request sent'
+  } catch (error) {
+    notice.value = error instanceof Error ? error.message : 'Join request failed'
+  }
+}
+
+async function savePresence(showNotice = true) {
+  try {
+    presence.value = await updatePresence(presenceStatus.value)
+    if (showNotice) notice.value = 'Presence updated'
+  } catch (error) {
+    notice.value = error instanceof Error ? error.message : 'Presence update failed'
+  }
+}
+
+async function loadSearchHistory() {
+  searchHistory.value = await listSearchHistory()
+}
+
+async function loadRecommendations() {
+  const result = await listRecommendations()
+  recommendedFriends.value = result.friends
+  recommendedGroups.value = result.groups
+  recommendedTopics.value = result.topics
 }
 
 async function approveRequest(request: FriendRequest) {
@@ -279,6 +392,10 @@ function requestStatus(status: number) {
   if (status === 3) return 'Rejected'
   return 'Pending'
 }
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleString()
+}
 </script>
 
 <style scoped>
@@ -337,6 +454,13 @@ small,
   gap: 10px;
 }
 
+.friend-card select {
+  border: 1px solid #d8e0ea;
+  border-radius: 6px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
 .search-row input {
   flex: 1;
   min-width: 0;
@@ -347,9 +471,16 @@ small,
 
 .user-list,
 .request-list,
-.blocked-list {
+.blocked-list,
+.history-list,
+.topic-list {
   display: grid;
   gap: 8px;
+}
+
+.history-list,
+.topic-list {
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
 }
 
 .user-list button,
