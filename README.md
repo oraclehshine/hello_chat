@@ -95,3 +95,9 @@ PowerShell example:
 ```powershell
 $env:API_BASE_URL='http://localhost:8083/api/v1'; node scripts/e2e-smoke.mjs
 ```
+
+To start the backend with values loaded from `.env`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-backend.ps1
+```

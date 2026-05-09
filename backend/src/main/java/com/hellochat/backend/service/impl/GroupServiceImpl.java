@@ -802,11 +802,9 @@ public class GroupServiceImpl implements GroupService {
                 member.getUserId(),
                 member.getLastReadAt()
             );
-        long mentionUnreadCount = groupMessageRepository.countUnreadMentions(
-            group.getId(),
-            member.getUserId(),
-            member.getLastReadAt()
-        );
+        long mentionUnreadCount = member.getLastReadAt() == null
+            ? groupMessageRepository.countUnreadMentions(group.getId(), member.getUserId())
+            : groupMessageRepository.countUnreadMentionsAfter(group.getId(), member.getUserId(), member.getLastReadAt());
         boolean noticeUnread = group.getNoticeUpdatedAt() != null
             && (member.getNoticeReadAt() == null || member.getNoticeReadAt().isBefore(group.getNoticeUpdatedAt()));
         return new GroupResponse(group, memberCount, unreadCount, mentionUnreadCount, noticeUnread);
@@ -837,8 +835,8 @@ public class GroupServiceImpl implements GroupService {
             .map(message -> new GroupMessageResponse(
                 message,
                 users.get(message.getSenderId()),
-                fileAssets.get(message.getFileId()),
-                replies.get(message.getReplyToMessageId()),
+                message.getFileId() == null ? null : fileAssets.get(message.getFileId()),
+                message.getReplyToMessageId() == null ? null : replies.get(message.getReplyToMessageId()),
                 mentionMap.getOrDefault(message.getId(), List.of())
             ))
             .toList();

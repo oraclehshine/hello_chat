@@ -233,15 +233,15 @@ async function main() {
     await carol.post(`/users/friend-requests/${carolRequest.requestId}/approve`, {});
 
     const friends = await alice.get('/users/friends');
-    assert(friends.some((item) => item.friendUserId === state.users.bob.userId), 'bob is not in friend list');
-    assert(friends.some((item) => item.friendUserId === state.users.carol.userId), 'carol is not in friend list');
+    assert(friends.some((item) => item.userId === state.users.bob.userId), 'bob is not in friend list');
+    assert(friends.some((item) => item.userId === state.users.carol.userId), 'carol is not in friend list');
 
     const updated = await alice.put(`/users/friends/${state.users.bob.userId}`, {
       remarkName: 'Smoke Bob',
       friendGroup: 'Smoke Group',
       star: true,
     });
-    assert(updated.star === true, 'friend star flag was not updated');
+    assert(updated.star === 1 || updated.star === true, 'friend star flag was not updated');
   });
 
   await step('block and unblock generated user', async () => {

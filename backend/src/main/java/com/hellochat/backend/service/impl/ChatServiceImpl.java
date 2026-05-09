@@ -298,7 +298,10 @@ public class ChatServiceImpl implements ChatService {
             : fileAssetRepository.findAllById(fileIds).stream()
                 .collect(Collectors.toMap(FileAsset::getId, Function.identity()));
         return messages.stream()
-            .map(message -> new PrivateMessageResponse(message, fileAssets.get(message.getFileId())))
+            .map(message -> new PrivateMessageResponse(
+                message,
+                message.getFileId() == null ? null : fileAssets.get(message.getFileId())
+            ))
             .toList();
     }
 }

@@ -35,10 +35,24 @@ public interface GroupMessageRepository extends JpaRepository<GroupMessage, Long
         where m.groupId = :groupId
           and m.senderId <> :userId
           and m.deletedAt is null
-          and (:lastReadAt is null or m.sentAt > :lastReadAt)
           and (m.mentionAll = 1 or mention.userId = :userId)
         """)
     long countUnreadMentions(
+        @Param("groupId") Long groupId,
+        @Param("userId") Long userId
+    );
+
+    @Query("""
+        select count(distinct m.id)
+        from GroupMessage m
+        left join GroupMessageMention mention on mention.messageId = m.id
+        where m.groupId = :groupId
+          and m.senderId <> :userId
+          and m.deletedAt is null
+          and m.sentAt > :lastReadAt
+          and (m.mentionAll = 1 or mention.userId = :userId)
+        """)
+    long countUnreadMentionsAfter(
         @Param("groupId") Long groupId,
         @Param("userId") Long userId,
         @Param("lastReadAt") LocalDateTime lastReadAt
