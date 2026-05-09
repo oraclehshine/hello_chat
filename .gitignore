@@ -1,0 +1,8 @@
+backend/target/
+backend/.m2repo/
+front/dist/
+front/node_modules/
+front/*.log
+front/*.err.log
+front/*.tsbuildinfo
+**/.DS_Store
