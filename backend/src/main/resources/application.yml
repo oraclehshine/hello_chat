@@ -2,9 +2,9 @@
   application:
     name: hello-chat-backend
   datasource:
-    url: jdbc:postgresql://localhost:5433/hello_chat
-    username: postgres
-    password: wang5874579%
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/hello_chat}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:wang5874579%}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -15,11 +15,11 @@
         format_sql: true
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: ""
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   jackson:
     time-zone: Asia/Shanghai
   flyway:
@@ -29,22 +29,32 @@
     locations: classpath:db/migration
 
 server:
-  port: 8083
+  port: ${SERVER_PORT:8083}
 
 hello-chat:
   auth:
-    secret: hello-chat-local-development-secret
-    access-token-seconds: 7200
+    secret: ${HELLO_CHAT_AUTH_SECRET:hello-chat-local-development-secret}
+    access-token-seconds: ${HELLO_CHAT_ACCESS_TOKEN_SECONDS:7200}
   moderation:
-    admin-user-ids: 1
+    admin-user-ids: ${HELLO_CHAT_ADMIN_USER_IDS:1}
 
 aliyun:
   oss:
-    endpoint: oss-cn-hangzhou.aliyuncs.com
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
     access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
     access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
-    bucket-name: hello-chat-im
-    public-url-prefix: https://hello-chat-im.oss-cn-hangzhou.aliyuncs.com/
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:hello-chat-im}
+    public-url-prefix: ${ALIYUN_OSS_PUBLIC_URL_PREFIX:https://hello-chat-im.oss-cn-hangzhou.aliyuncs.com/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 logging:
   level:
