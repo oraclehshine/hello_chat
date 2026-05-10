@@ -101,3 +101,11 @@ To start the backend with values loaded from `.env`:
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-backend.ps1
 ```
+
+Detailed module regression test:
+
+```powershell
+node scripts/e2e-modules.mjs
+```
+
+It covers auth, user/friend, social, private chat, group, moment, file upload behavior, and cleanup with both success and expected-failure cases.
