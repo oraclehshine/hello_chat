@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section class="card home-card">
     <header class="home-header">
       <div>
@@ -6,33 +6,33 @@
         <p>{{ userEmail }}</p>
       </div>
       <div class="home-actions">
-        <router-link to="/profile" class="secondary-btn link-btn">Profile</router-link>
-        <button class="danger-btn" @click="handleLogout">Logout</button>
+        <router-link to="/profile" class="secondary-btn link-btn">个人资料</router-link>
+        <button class="danger-btn" @click="handleLogout">退出登录</button>
       </div>
     </header>
 
-    <h1 class="hero-title">Workspace</h1>
-    <p class="hero-subtitle">Open a private chat, manage your profile, and continue through the project milestones.</p>
+    <h1 class="hero-title">消息工作台</h1>
+    <p class="hero-subtitle">从这里进入私聊、好友、群聊、朋友圈和个人资料。</p>
 
     <div class="module-grid">
       <router-link to="/chats" class="module-card">
-        <h3>Private Chat</h3>
-        <p>Conversation list, user search, message sending, recall, delete, and message history.</p>
+        <h3>单聊</h3>
+        <p>会话列表、用户搜索、消息发送、撤回、删除和历史记录。</p>
       </router-link>
 
       <router-link to="/profile" class="module-card">
-        <h3>Profile</h3>
-        <p>Nickname, avatar, signature, phone, and verified email changes.</p>
+        <h3>个人资料</h3>
+        <p>维护昵称、头像、签名、电话和邮箱验证。</p>
       </router-link>
 
       <router-link to="/groups" class="module-card">
-        <h3>Groups</h3>
-        <p>Group creation, members, notices, approvals, and real-time group messages.</p>
+        <h3>群聊</h3>
+        <p>创建群组、管理成员、公告、审批和群消息。</p>
       </router-link>
 
       <router-link to="/moments" class="module-card">
-        <h3>Moments</h3>
-        <p>Publish moments, browse timeline, comment, like, collect, and manage your posts.</p>
+        <h3>朋友圈</h3>
+        <p>发布动态、浏览时间线、评论、点赞、收藏和管理内容。</p>
       </router-link>
     </div>
   </section>
@@ -70,7 +70,10 @@ async function handleLogout() {
 
 <style scoped>
 .home-card {
-  max-width: 1120px;
+  display: flex;
+  max-width: none;
+  min-height: 100%;
+  flex-direction: column;
 }
 
 .home-header {
@@ -111,12 +114,13 @@ async function handleLogout() {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  flex: 1;
 }
 
 .module-card {
   display: block;
-  min-height: 150px;
-  padding: 20px;
+  min-height: 220px;
+  padding: 28px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #fff;
@@ -131,6 +135,7 @@ async function handleLogout() {
 
 .module-card h3 {
   margin: 0 0 10px;
+  font-size: 22px;
 }
 
 .module-card p {
@@ -155,3 +160,4 @@ async function handleLogout() {
   }
 }
 </style>
+

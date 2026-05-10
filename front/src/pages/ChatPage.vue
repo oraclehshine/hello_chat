@@ -1,18 +1,18 @@
-<template>
+﻿<template>
   <section class="chat-workspace">
     <aside class="chat-sidebar">
       <header class="chat-sidebar-header">
         <div>
-          <h2>Chats</h2>
-          <p>Private conversations</p>
+          <h2>单聊</h2>
+          <p>私聊会话</p>
         </div>
-        <button class="icon-button" :disabled="loadingChats" title="Refresh" @click="loadChats">Refresh</button>
+        <button class="icon-button" :disabled="loadingChats" title="刷新" @click="loadChats">刷新</button>
       </header>
 
       <div class="search-box">
-        <input v-model="searchKeyword" type="search" placeholder="Search email or nickname" @keyup.enter="handleSearch" />
+        <input v-model="searchKeyword" type="search" placeholder="搜索邮箱或昵称" @keyup.enter="handleSearch" />
         <button class="secondary-btn compact" :disabled="searching" @click="handleSearch">
-          {{ searching ? '...' : 'Search' }}
+          {{ searching ? '...' : '搜索' }}
         </button>
       </div>
 
@@ -48,11 +48,11 @@
               <strong>{{ chat.targetNickname || chat.targetEmail }}</strong>
               <time>{{ chat.lastMessageAt ? formatShortTime(chat.lastMessageAt) : '' }}</time>
             </span>
-            <small>{{ chat.lastMessagePreview || 'No messages yet' }}</small>
+            <small>{{ chat.lastMessagePreview || '暂无消息' }}</small>
           </span>
           <span v-if="chat.unreadCount > 0" class="unread-badge">{{ chat.unreadCount > 99 ? '99+' : chat.unreadCount }}</span>
         </button>
-        <div v-if="!loadingChats && !chats.length" class="empty-list">No conversations yet</div>
+        <div v-if="!loadingChats && !chats.length" class="empty-list">暂无会话</div>
       </div>
     </aside>
 
@@ -64,29 +64,29 @@
         </span>
         <div class="chat-header-main">
           <h2>{{ activeChat.targetNickname || activeChat.targetEmail }}</h2>
-          <p>{{ typingChatId === activeChat.chatId ? 'Typing...' : activeChat.targetEmail }}</p>
+          <p>{{ typingChatId === activeChat.chatId ? '对方正在输入...' : activeChat.targetEmail }}</p>
         </div>
       </header>
 
       <div v-if="notice" class="notice error">{{ notice }}</div>
 
       <div v-if="!activeChat" class="empty-chat">
-        <h2>Select a chat</h2>
-        <p>Search a user by email or nickname to start a private conversation.</p>
+        <h2>选择一个会话</h2>
+        <p>通过邮箱或昵称搜索用户，开始一段私聊。</p>
       </div>
 
       <div v-else class="message-area">
         <div class="message-search">
-          <input v-model="messageKeyword" type="search" placeholder="Search messages in this chat" @keyup.enter="handleMessageSearch" />
+          <input v-model="messageKeyword" type="search" placeholder="搜索当前会话消息" @keyup.enter="handleMessageSearch" />
           <button class="secondary-btn compact" :disabled="searchingMessages" @click="handleMessageSearch">
-            {{ searchingMessages ? '...' : 'Search' }}
+            {{ searchingMessages ? '...' : '搜索' }}
           </button>
-          <button v-if="messageKeyword" class="secondary-btn compact" @click="clearMessageSearch">Clear</button>
+          <button v-if="messageKeyword" class="secondary-btn compact" @click="clearMessageSearch">清空</button>
         </div>
         <div ref="messageListRef" class="message-list" @scroll="handleMessageScroll">
-          <div v-if="loadingMessages" class="message-state">Loading messages...</div>
+          <div v-if="loadingMessages" class="message-state">消息加载中...</div>
           <div v-else-if="!orderedMessages.length" class="message-state">
-            {{ messageKeyword ? 'No matching messages' : 'Say hello to start this conversation' }}
+            {{ messageKeyword ? '没有匹配的消息' : '发一句你好，开始这段对话' }}
           </div>
           <button
             v-if="!loadingMessages && !messageKeyword && hasMoreMessages"
@@ -94,7 +94,7 @@
             :disabled="loadingEarlierMessages"
             @click="loadEarlierMessages"
           >
-            {{ loadingEarlierMessages ? 'Loading...' : 'Load earlier messages' }}
+            {{ loadingEarlierMessages ? '加载中...' : '加载更早消息' }}
           </button>
           <article
             v-for="message in orderedMessages"
@@ -102,7 +102,7 @@
             class="message-bubble"
             :class="{ mine: message.senderId === currentUserId }"
           >
-            <p v-if="message.recallStatus === 1" class="recalled">Message recalled</p>
+            <p v-if="message.recallStatus === 1" class="recalled">消息已撤回</p>
             <template v-else>
               <p v-if="message.messageType === 'image'">
                 <button class="image-preview-button" @click="previewImageUrl = message.content">
@@ -111,7 +111,7 @@
               </p>
               <p v-else-if="message.messageType === 'file'">
                 <a class="file-card" :href="message.content" target="_blank" rel="noreferrer">
-                  <span class="file-icon">FILE</span>
+                  <span class="file-icon">文件</span>
                   <span class="file-info">
                     <strong>{{ message.fileName || fileNameFromUrl(message.content) }}</strong>
                     <small>{{ fileMeta(message) }}</small>
@@ -121,17 +121,17 @@
               <p v-else>{{ message.content }}</p>
             </template>
             <footer>
-              <span v-if="message.pinnedAt" class="pin-label">Pinned</span>
+              <span v-if="message.pinnedAt" class="pin-label">已置顶</span>
               <span>{{ formatTime(message.sentAt) }}</span>
               <span v-if="message.senderId === currentUserId" class="read-label">
-                {{ message.messageStatus === 2 ? 'Read' : 'Sent' }}
+                {{ message.messageStatus === 2 ? '已读' : '已发送' }}
               </span>
-              <button v-if="!message.pinnedAt" @click="handlePin(message.messageId)">Pin</button>
-              <button v-else @click="handleUnpin(message.messageId)">Unpin</button>
+              <button v-if="!message.pinnedAt" @click="handlePin(message.messageId)">置顶</button>
+              <button v-else @click="handleUnpin(message.messageId)">取消置顶</button>
               <button v-if="message.senderId === currentUserId && message.recallStatus === 0" @click="handleRecall(message.messageId)">
                 Recall
               </button>
-              <button @click="handleDelete(message.messageId)">Delete</button>
+              <button @click="handleDelete(message.messageId)">删除</button>
             </footer>
           </article>
         </div>
@@ -141,16 +141,16 @@
             v-model="draft"
             rows="1"
             maxlength="1000"
-            placeholder="Type a message"
+            placeholder="输入消息"
             @input="handleDraftInput"
             @keydown.enter.exact.prevent="handleSend"
           />
           <input ref="imageInput" class="hidden-file-input" type="file" accept="image/*" @change="handleImageSelect" />
           <input ref="fileInput" class="hidden-file-input" type="file" @change="handleFileSelect" />
-          <button type="button" class="secondary-btn compact" :disabled="sending" @click="pickImage">Image</button>
-          <button type="button" class="secondary-btn compact" :disabled="sending" @click="pickFile">File</button>
+          <button type="button" class="secondary-btn compact" :disabled="sending" @click="pickImage">图片</button>
+          <button type="button" class="secondary-btn compact" :disabled="sending" @click="pickFile">文件</button>
           <button class="primary-btn compact" :disabled="sending || !draft.trim()">
-            {{ sending ? 'Sending' : 'Send' }}
+            {{ sending ? '发送中' : '发送' }}
           </button>
         </form>
       </div>
@@ -265,7 +265,7 @@ async function loadChats() {
       activeChat.value = chats.value.find((chat) => chat.chatId === activeChat.value?.chatId) ?? activeChat.value
     }
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to load chats'
+    notice.value = error instanceof Error ? error.message : '加载会话失败'
   } finally {
     loadingChats.value = false
   }
@@ -290,7 +290,7 @@ async function loadMessages() {
     hasMoreMessages.value = page.hasMore
     await scrollMessagesToBottom()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to load messages'
+    notice.value = error instanceof Error ? error.message : '加载消息失败'
   } finally {
     loadingMessages.value = false
   }
@@ -314,7 +314,7 @@ async function loadEarlierMessages() {
       element.scrollTop = element.scrollHeight - previousHeight
     }
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to load earlier messages'
+    notice.value = error instanceof Error ? error.message : '加载更早消息失败'
   } finally {
     loadingEarlierMessages.value = false
   }
@@ -348,7 +348,7 @@ async function handleMessageSearch() {
     hasMoreMessages.value = false
     await scrollMessagesToBottom()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Message search failed'
+    notice.value = error instanceof Error ? error.message : '搜索消息失败'
   } finally {
     searchingMessages.value = false
   }
@@ -369,7 +369,7 @@ async function handleSearch() {
   try {
     searchResults.value = (await searchUsers(searchKeyword.value)).filter((user) => user.userId !== currentUserId.value)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Search failed'
+    notice.value = error instanceof Error ? error.message : '搜索失败'
   } finally {
     searching.value = false
   }
@@ -384,7 +384,7 @@ async function startChat(targetUserId: number) {
     await loadChats()
     await selectChat(chat)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to create chat'
+    notice.value = error instanceof Error ? error.message : '创建会话失败'
   }
 }
 
@@ -410,7 +410,7 @@ async function handleImageSelect(event: Event) {
     await loadMessages()
     await loadChats()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Image upload failed'
+    notice.value = error instanceof Error ? error.message : '图片上传失败'
   } finally {
     sending.value = false
   }
@@ -430,7 +430,7 @@ async function handleFileSelect(event: Event) {
     await loadMessages()
     await loadChats()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'File upload failed'
+    notice.value = error instanceof Error ? error.message : '文件上传失败'
   } finally {
     sending.value = false
   }
@@ -447,7 +447,7 @@ async function handleSend() {
     await loadMessages()
     await loadChats()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to send message'
+    notice.value = error instanceof Error ? error.message : '发送消息失败'
   } finally {
     sending.value = false
   }
@@ -481,21 +481,21 @@ function clearTypingTimers() {
 
 async function handleRecall(messageId: number) {
   try {
-    if (!window.confirm('Recall this message?')) return
+    if (!window.confirm('确认撤回这条消息？')) return
     await recallMessage(messageId)
     await loadMessages()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Recall failed'
+    notice.value = error instanceof Error ? error.message : '撤回失败'
   }
 }
 
 async function handleDelete(messageId: number) {
   try {
-    if (!window.confirm('Delete this message from your view?')) return
+    if (!window.confirm('确认从你的视图中删除这条消息？')) return
     await deleteMessage(messageId)
     await loadMessages()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Delete failed'
+    notice.value = error instanceof Error ? error.message : '删除失败'
   }
 }
 
@@ -504,7 +504,7 @@ async function handlePin(messageId: number) {
     await pinMessage(messageId)
     await loadMessages()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Pin failed'
+    notice.value = error instanceof Error ? error.message : '置顶失败'
   }
 }
 
@@ -513,7 +513,7 @@ async function handleUnpin(messageId: number) {
     await unpinMessage(messageId)
     await loadMessages()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Unpin failed'
+    notice.value = error instanceof Error ? error.message : '取消置顶失败'
   }
 }
 
@@ -538,10 +538,10 @@ function fileNameFromUrl(url: string) {
   try {
     const pathname = new URL(url).pathname
     const name = pathname.split('/').pop()
-    return name ? decodeURIComponent(name) : 'Attachment'
+    return name ? decodeURIComponent(name) : '附件'
   } catch {
     const name = url.split('/').pop()
-    return name || 'Attachment'
+    return name || '附件'
   }
 }
 
@@ -553,7 +553,7 @@ function fileMeta(message: ChatMessage) {
   if (message.fileSize != null) {
     parts.push(formatFileSize(message.fileSize))
   }
-  return parts.length ? parts.join(' · ') : 'Open attachment'
+  return parts.length ? parts.join(' · ') : '打开附件'
 }
 
 function formatFileSize(size: number) {
@@ -583,11 +583,12 @@ async function scrollMessagesToBottom() {
 .chat-workspace {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
-  max-width: 1180px;
+  min-height: 100%;
+  height: 100%;
+  width: 100%;
   background: #fff;
   border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 18px 48px rgba(17, 34, 68, 0.08);
 }
@@ -831,7 +832,7 @@ async function scrollMessagesToBottom() {
   align-self: flex-start;
   max-width: min(560px, 86%);
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 16px;
   background: #eef2f7;
 }
 
@@ -988,7 +989,7 @@ async function scrollMessagesToBottom() {
 .image-lightbox img {
   max-width: min(960px, 96vw);
   max-height: 90vh;
-  border-radius: 8px;
+  border-radius: 16px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
 }
 
@@ -1012,3 +1013,8 @@ async function scrollMessagesToBottom() {
   }
 }
 </style>
+
+
+
+
+

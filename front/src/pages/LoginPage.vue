@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../api/auth'
@@ -21,12 +21,12 @@ async function submitLogin() {
       userId: data.userId,
       email: data.email,
       nickname: data.nickname,
-      avatarUrl: data.avatarUrl
+      avatarUrl: data.avatarUrl,
     }))
-    status.value = `登录成功，当前用户：${data.nickname}`
+    status.value = `登录成功，欢迎回来：${data.nickname || data.email}`
     await router.push('/home')
   } catch (submitError) {
-    error.value = submitError instanceof Error ? submitError.message : '登录失败'
+    error.value = submitError instanceof Error ? submitError.message : '登录失败，请检查邮箱和密码'
   } finally {
     loading.value = false
   }
@@ -34,29 +34,34 @@ async function submitLogin() {
 </script>
 
 <template>
-  <section class="card auth-card">
+  <section class="auth-card">
+    <p class="eyebrow">Welcome back</p>
     <h2 class="hero-title">登录 Hello Chat</h2>
-    <p class="hero-subtitle">使用注册邮箱登录，进入单聊、群聊和朋友圈主界面。</p>
+    <p class="hero-subtitle">这是独立的账号入口。登录后再进入聊天、群组、朋友圈和个人资料工作台。</p>
 
     <div v-if="status" class="notice success">{{ status }}</div>
     <div v-if="error" class="notice error">{{ error }}</div>
 
     <div class="field-grid">
       <div class="field">
-        <label>邮箱</label>
-        <input v-model="form.email" type="email" placeholder="user@example.com" />
+        <label for="login-email">邮箱</label>
+        <input id="login-email" v-model.trim="form.email" type="email" placeholder="user@example.com" autocomplete="email" />
       </div>
       <div class="field">
-        <label>密码</label>
-        <input v-model="form.password" type="password" placeholder="请输入密码" />
+        <label for="login-password">密码</label>
+        <input id="login-password" v-model="form.password" type="password" placeholder="请输入密码" autocomplete="current-password" />
       </div>
     </div>
 
     <div class="actions">
-      <button class="primary-btn" :disabled="loading" @click="submitLogin">
-        {{ loading ? '登录中...' : '登录' }}
+      <button class="primary-btn full" :disabled="loading" type="button" @click="submitLogin">
+        {{ loading ? '登录中...' : '进入工作台' }}
       </button>
-      <RouterLink class="secondary-btn link-btn" to="/reset-password">忘记密码</RouterLink>
+    </div>
+
+    <div class="auth-links">
+      <span>还没有账号？<RouterLink to="/register">创建账号</RouterLink></span>
+      <span>忘记密码？<RouterLink to="/reset-password">重置密码</RouterLink></span>
     </div>
   </section>
 </template>

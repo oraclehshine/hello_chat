@@ -1,31 +1,31 @@
-<template>
+﻿<template>
   <section class="moments-workspace">
     <aside class="moments-side">
       <header>
-        <h2>Moments</h2>
-        <p>Phase 4 timeline</p>
+        <h2>朋友圈</h2>
+        <p>动态时间线</p>
       </header>
 
       <form class="composer-card" @submit.prevent="handleCreateMoment">
-        <textarea v-model="draft" rows="5" maxlength="5000" placeholder="Share something"></textarea>
-        <input v-model="locationDraft" placeholder="Location" />
-        <input v-model="tagDraft" placeholder="Tags, comma separated" />
+        <textarea v-model="draft" rows="5" maxlength="5000" placeholder="分享一点新鲜事"></textarea>
+        <input v-model="locationDraft" placeholder="位置" />
+        <input v-model="tagDraft" placeholder="标签，用逗号分隔" />
         <div class="composer-inline">
-          <input v-model="moodDraft" maxlength="32" placeholder="Mood" />
-          <input v-model="activityDraft" maxlength="32" placeholder="Activity" />
+          <input v-model="moodDraft" maxlength="32" placeholder="心情" />
+          <input v-model="activityDraft" maxlength="32" placeholder="活动" />
         </div>
         <select v-model="visibilityDraft">
-          <option value="public">Public</option>
-          <option value="friends">Friends</option>
-          <option value="private">Private</option>
-          <option value="specified">Specified</option>
+          <option value="public">公开</option>
+          <option value="friends">好友可见</option>
+          <option value="private">仅自己</option>
+          <option value="specified">指定可见</option>
         </select>
         <div v-if="visibilityDraft === 'specified'" class="friend-picker">
           <label v-for="friend in friends" :key="friend.userId">
             <input v-model="visibleUserIdsDraft" type="checkbox" :value="friend.userId" />
             <span>{{ friend.remarkName || friend.nickname || friend.email }}</span>
           </label>
-          <small v-if="!friends.length">No friends available</small>
+          <small v-if="!friends.length">暂无可选好友</small>
         </div>
         <input ref="mediaInput" class="hidden-file-input" type="file" accept="image/*,video/*" multiple @change="handleMediaSelect" />
         <div v-if="mediaDraft.length" class="media-draft">
@@ -35,43 +35,43 @@
           </span>
         </div>
         <div class="composer-actions">
-          <button type="button" class="secondary-btn compact" :disabled="creating" @click="mediaInput?.click()">Media</button>
+          <button type="button" class="secondary-btn compact" :disabled="creating" @click="mediaInput?.click()">媒体</button>
           <button class="primary-btn compact" :disabled="creating || !canPost">
-            {{ creating ? 'Posting' : 'Post' }}
+            {{ creating ? '发布中' : '发布' }}
           </button>
         </div>
       </form>
 
       <section class="profile-card">
-        <h3>{{ profileSummary?.nickname || userNickname || userEmail || 'Me' }}</h3>
+        <h3>{{ profileSummary?.nickname || userNickname || userEmail || '我' }}</h3>
         <p>{{ profileSummary?.email || userEmail }}</p>
         <div v-if="profileSummary" class="profile-stats">
-          <span>Moments {{ profileSummary.momentCount }}</span>
-          <span>Likes {{ profileSummary.totalLikeCount }}</span>
-          <span>Comments {{ profileSummary.totalCommentCount }}</span>
-          <span>Collections {{ profileSummary.totalCollectCount }}</span>
-          <span>Followers {{ profileSummary.followerCount }}</span>
-          <span>Following {{ profileSummary.followingCount }}</span>
+          <span>动态 {{ profileSummary.momentCount }}</span>
+          <span>点赞 {{ profileSummary.totalLikeCount }}</span>
+          <span>评论 {{ profileSummary.totalCommentCount }}</span>
+          <span>收藏 {{ profileSummary.totalCollectCount }}</span>
+          <span>粉丝 {{ profileSummary.followerCount }}</span>
+          <span>关注 {{ profileSummary.followingCount }}</span>
         </div>
-        <button class="secondary-btn compact" @click="loadMyMoments">My moments</button>
+        <button class="secondary-btn compact" @click="loadMyMoments">我的动态</button>
         <button v-if="viewingMine && viewingProfileUserId !== currentUserId" class="secondary-btn compact" @click="loadTimeline">
           Back to timeline
         </button>
-        <button class="secondary-btn compact" @click="loadCollectedMoments">Collections</button>
-        <button class="secondary-btn compact" @click="loadTimeline">Timeline</button>
+        <button class="secondary-btn compact" @click="loadCollectedMoments">我的收藏</button>
+        <button class="secondary-btn compact" @click="loadTimeline">时间线</button>
       </section>
 
       <section class="profile-card">
         <div class="notification-head">
-          <h3>Notifications <span v-if="unreadNotifications">({{ unreadNotifications }})</span></h3>
+          <h3>通知 <span v-if="unreadNotifications">({{ unreadNotifications }})</span></h3>
           <button class="secondary-btn compact" :disabled="loadingNotifications" @click="loadNotifications">
-            {{ loadingNotifications ? 'Loading' : 'Refresh' }}
+            {{ loadingNotifications ? '加载中' : '刷新' }}
           </button>
         </div>
         <button v-if="unreadNotifications" class="secondary-btn compact" @click="markAllNotificationsRead">
           Mark all read
         </button>
-        <div v-if="!notifications.length" class="notification-empty">No updates</div>
+        <div v-if="!notifications.length" class="notification-empty">暂无通知</div>
         <div v-else class="notification-list">
           <button
             v-for="notification in notifications"
@@ -89,20 +89,20 @@
 
       <section v-if="isModerator" class="profile-card">
         <div class="notification-head">
-          <h3>Reports</h3>
+          <h3>举报审核</h3>
           <button class="secondary-btn compact" :disabled="loadingReports" @click="loadReports">
-            {{ loadingReports ? 'Loading' : 'Refresh' }}
+            {{ loadingReports ? '加载中' : '刷新' }}
           </button>
         </div>
-        <div v-if="!reports.length" class="notification-empty">No pending reports</div>
+        <div v-if="!reports.length" class="notification-empty">暂无待处理举报</div>
         <div v-else class="report-list">
           <article v-for="report in reports" :key="report.reportId">
             <strong>#{{ report.reportId }} {{ report.authorNickname || `Moment ${report.momentId}` }}</strong>
             <p>{{ report.reason }}</p>
-            <small>{{ report.momentContent || 'Moment unavailable' }}</small>
+            <small>{{ report.momentContent || '动态不可用' }}</small>
             <div class="report-actions">
-              <button class="secondary-btn compact" @click="reviewReport(report, 3, false)">Reject</button>
-              <button class="danger-action compact" @click="reviewReport(report, 2, true)">Remove</button>
+              <button class="secondary-btn compact" @click="reviewReport(report, 3, false)">驳回</button>
+              <button class="danger-action compact" @click="reviewReport(report, 2, true)">移除</button>
             </div>
           </article>
         </div>
@@ -113,7 +113,7 @@
       <header class="timeline-header">
         <div>
           <h2>{{ timelineTitle }}</h2>
-          <p>{{ moments.length }} loaded</p>
+          <p>已加载 {{ moments.length }} 条</p>
         </div>
         <button class="icon-button" :disabled="loading" @click="refreshCurrentView">
           Refresh
@@ -121,8 +121,8 @@
       </header>
 
       <div v-if="notice" class="notice error">{{ notice }}</div>
-      <div v-if="loading" class="empty-state">Loading moments...</div>
-      <div v-else-if="!moments.length" class="empty-state">No moments yet</div>
+      <div v-if="loading" class="empty-state">动态加载中...</div>
+      <div v-else-if="!moments.length" class="empty-state">暂无动态</div>
 
       <article v-for="moment in moments" :key="moment.momentId" class="moment-item">
         <header class="moment-head">
@@ -136,9 +136,9 @@
                 {{ moment.authorNickname || `User ${moment.authorId}` }}
               </button>
             </h3>
-            <p>{{ formatTime(moment.createdAt) }} · {{ moment.visibility }}{{ moment.location ? ` · ${moment.location}` : '' }}</p>
+            <p>{{ formatTime(moment.createdAt) }} | {{ moment.visibility }}{{ moment.location ? ` | ${moment.location}` : '' }}</p>
           </div>
-          <button v-if="moment.authorId === currentUserId" class="danger-link" @click="handleDeleteMoment(moment)">Delete</button>
+          <button v-if="moment.authorId === currentUserId" class="danger-link" @click="handleDeleteMoment(moment)">删除</button>
         </header>
 
         <textarea v-if="editingMomentId === moment.momentId" v-model="editDraft" rows="4" maxlength="5000"></textarea>
@@ -149,52 +149,52 @@
           <span v-if="moment.activity">{{ moment.activity }}</span>
         </div>
         <div v-if="editingMomentId === moment.momentId" class="moment-actions">
-          <button class="primary-btn compact" @click="saveEdit(moment)">Save</button>
-          <button class="secondary-btn compact" @click="cancelEdit">Cancel</button>
+          <button class="primary-btn compact" @click="saveEdit(moment)">保存</button>
+          <button class="secondary-btn compact" @click="cancelEdit">取消</button>
         </div>
 
         <div v-if="moment.mediaList.length" class="moment-media-grid">
           <button v-for="media in moment.mediaList" :key="media.fileId" type="button" @click="previewUrl = media.fileUrl">
             <img v-if="media.mimeType.startsWith('image/')" :src="media.fileUrl" alt="" />
-            <span v-else>Video/File</span>
+            <span v-else>视频/文件</span>
           </button>
         </div>
 
         <footer class="moment-actions">
-          <button @click="toggleLike(moment)">{{ moment.liked ? 'Unlike' : 'Like' }} · {{ moment.likeCount }}</button>
-          <button @click="toggleCollect(moment)">{{ moment.collected ? 'Uncollect' : 'Collect' }} · {{ moment.collectCount }}</button>
-          <button @click="toggleComments(moment)">Comments · {{ moment.commentCount }}</button>
-          <button @click="showLikes(moment)">Liked by</button>
-          <button v-if="moment.authorId === currentUserId" @click="startEdit(moment)">Edit</button>
-          <button v-else @click="handleReport(moment)">Report</button>
+          <button @click="toggleLike(moment)">{{ moment.liked ? '取消点赞' : '点赞' }} | {{ moment.likeCount }}</button>
+          <button @click="toggleCollect(moment)">{{ moment.collected ? '取消收藏' : '收藏' }} | {{ moment.collectCount }}</button>
+          <button @click="toggleComments(moment)">评论 | {{ moment.commentCount }}</button>
+          <button @click="showLikes(moment)">点赞用户</button>
+          <button v-if="moment.authorId === currentUserId" @click="startEdit(moment)">编辑</button>
+          <button v-else @click="handleReport(moment)">举报</button>
         </footer>
 
         <section v-if="openCommentMomentId === moment.momentId" class="comments-panel">
           <div v-if="mentionUserIdsDraft.length" class="mention-draft">
             Mentioning {{ mentionUserIdsDraft.map(labelFriend).join(', ') }}
-            <button type="button" @click="clearCommentMentions">Clear</button>
+            <button type="button" @click="clearCommentMentions">清空</button>
           </div>
           <form class="comment-form" @submit.prevent="submitComment(moment)">
-            <input v-model="commentDraft" maxlength="1000" placeholder="Write a comment" />
-            <button class="secondary-btn compact" type="button" @click="chooseCommentMentions">@User</button>
-            <button class="primary-btn compact" :disabled="!commentDraft.trim()">Comment</button>
+            <input v-model="commentDraft" maxlength="1000" placeholder="写一条评论" />
+            <button class="secondary-btn compact" type="button" @click="chooseCommentMentions">@好友</button>
+            <button class="primary-btn compact" :disabled="!commentDraft.trim()">评论</button>
           </form>
           <div v-for="comment in comments" :key="comment.commentId" class="comment-row">
             <span>
               <button class="author-link comment-author" type="button" @click="openUserMoments(comment.userId)">
                 {{ comment.userNickname || `User ${comment.userId}` }}
               </button>
-              <small v-if="comment.replyToCommentId"> replied #{{ comment.replyToCommentId }}</small>
+              <small v-if="comment.replyToCommentId"> 回复 #{{ comment.replyToCommentId }}</small>
               {{ comment.content }}
             </span>
-            <button @click="startReply(comment)">Reply</button>
-            <button v-if="canDeleteComment(moment, comment)" @click="removeComment(moment, comment)">Delete</button>
+            <button @click="startReply(comment)">回复</button>
+            <button v-if="canDeleteComment(moment, comment)" @click="removeComment(moment, comment)">删除</button>
           </div>
         </section>
       </article>
 
       <button v-if="hasMore && !loading" class="load-more" :disabled="loadingMore" @click="loadMore">
-        {{ loadingMore ? 'Loading' : 'Load more' }}
+        {{ loadingMore ? '加载中' : '加载更多' }}
       </button>
     </main>
 
@@ -281,11 +281,11 @@ const replyToCommentId = ref<number | undefined>()
 const canPost = computed(() => draft.value.trim().length > 0 || mediaDraft.value.length > 0)
 const isModerator = computed(() => currentUserId.value === 1)
 const timelineTitle = computed(() => {
-  if (viewingCollections.value) return 'Collections'
-  if (!viewingMine.value) return 'Timeline'
-  if (viewingProfileUserId.value === currentUserId.value) return 'My moments'
+  if (viewingCollections.value) return '我的收藏'
+  if (!viewingMine.value) return '时间线'
+  if (viewingProfileUserId.value === currentUserId.value) return '我的动态'
   const name = profileSummary.value?.nickname || `User ${viewingProfileUserId.value}`
-  return `${name} moments`
+  return `${name} 的动态`
 })
 
 onMounted(async () => {
@@ -370,7 +370,7 @@ async function loadMomentPage(append: boolean) {
     moments.value = append ? [...moments.value, ...result.list] : result.list
     hasMore.value = result.hasMore
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load moments failed'
+    notice.value = error instanceof Error ? error.message : '加载动态失败'
   } finally {
     loading.value = false
     loadingMore.value = false
@@ -385,7 +385,7 @@ async function loadNotifications() {
     notifications.value = result.list
     unreadNotifications.value = await countMomentUnreadNotifications()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load notifications failed'
+    notice.value = error instanceof Error ? error.message : '加载通知失败'
   } finally {
     loadingNotifications.value = false
   }
@@ -395,7 +395,7 @@ async function loadFriends() {
   try {
     friends.value = await listFriends()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load friends failed'
+    notice.value = error instanceof Error ? error.message : '加载好友失败'
   }
 }
 
@@ -416,7 +416,7 @@ async function loadReports() {
     reports.value = result.list
   } catch (error) {
     reports.value = []
-    notice.value = error instanceof Error ? error.message : 'Load reports failed'
+    notice.value = error instanceof Error ? error.message : '加载举报失败'
   } finally {
     loadingReports.value = false
   }
@@ -426,14 +426,14 @@ async function handleMediaSelect(event: Event) {
   const files = Array.from((event.target as HTMLInputElement).files || [])
   if (!files.length) return
   if (mediaDraft.value.length + files.length > 12) {
-    notice.value = 'Media must not exceed 12'
+    notice.value = '媒体数量不能超过 12 个'
     return
   }
   const nextFiles = [...mediaDraft.value, ...files.map((file) => ({ mimeType: file.type }))]
   const imageCount = nextFiles.filter((item) => item.mimeType.startsWith('image/')).length
   const videoCount = nextFiles.filter((item) => item.mimeType.startsWith('video/')).length
   if (imageCount > 9 || videoCount > 3) {
-    notice.value = 'Media supports up to 9 images and 3 videos'
+    notice.value = '最多支持 9 张图片和 3 个视频'
     return
   }
   creating.value = true
@@ -446,7 +446,7 @@ async function handleMediaSelect(event: Event) {
     mediaDraft.value = [...mediaDraft.value, ...uploaded]
     if (mediaInput.value) mediaInput.value.value = ''
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Media upload failed'
+    notice.value = error instanceof Error ? error.message : '媒体上传失败'
   } finally {
     creating.value = false
   }
@@ -480,7 +480,7 @@ async function handleCreateMoment() {
     mediaDraft.value = []
     await loadTimeline()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Create moment failed'
+    notice.value = error instanceof Error ? error.message : '发布动态失败'
   } finally {
     creating.value = false
   }
@@ -494,9 +494,9 @@ async function toggleLike(moment: Moment) {
 async function showLikes(moment: Moment) {
   try {
     const users = await listMomentLikes(moment.momentId)
-    window.alert(users.length ? users.map((user) => user.nickname || user.email || `User ${user.userId}`).join('\n') : 'No likes yet')
+    window.alert(users.length ? users.map((user) => user.nickname || user.email || `User ${user.userId}`).join('\n') : '暂无点赞')
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load likes failed'
+    notice.value = error instanceof Error ? error.message : '加载点赞用户失败'
   }
 }
 
@@ -536,11 +536,11 @@ function startReply(comment: MomentComment) {
 
 function chooseCommentMentions() {
   if (!friends.value.length) {
-    notice.value = 'No friends available to mention'
+    notice.value = '暂无可提及的好友'
     return
   }
   const names = friends.value.map((friend, index) => `${index + 1}. ${friend.remarkName || friend.nickname || friend.email}`).join('\n')
-  const raw = window.prompt(`Choose friends to mention by number, separated by commas\n${names}`)
+  const raw = window.prompt(`输入序号选择要提及的好友，多个序号用逗号分隔\n${names}`)
   if (!raw) return
   const userIds = raw
     .split(',')
@@ -548,7 +548,7 @@ function chooseCommentMentions() {
     .filter((index) => Number.isInteger(index) && index > 0 && index <= friends.value.length)
     .map((index) => friends.value[index - 1].userId)
   if (!userIds.length) {
-    notice.value = 'No valid friends selected'
+    notice.value = '没有选择有效好友'
     return
   }
   mentionUserIdsDraft.value = Array.from(new Set([...mentionUserIdsDraft.value, ...userIds]))
@@ -572,7 +572,7 @@ function parseTagDraft() {
 }
 
 async function removeComment(moment: Moment, comment: MomentComment) {
-  if (!window.confirm('Delete this comment?')) return
+  if (!window.confirm('确认删除这条评论？')) return
   await deleteMomentComment(moment.momentId, comment.commentId)
   comments.value = comments.value.filter((item) => item.commentId !== comment.commentId)
   replaceMoment({ ...moment, commentCount: Math.max(0, moment.commentCount - 1) })
@@ -595,19 +595,19 @@ async function saveEdit(moment: Moment) {
 }
 
 async function handleDeleteMoment(moment: Moment) {
-  if (!window.confirm('Delete this moment?')) return
+  if (!window.confirm('确认删除这条动态？')) return
   await deleteMoment(moment.momentId)
   moments.value = moments.value.filter((item) => item.momentId !== moment.momentId)
 }
 
 async function handleReport(moment: Moment) {
-  const reason = window.prompt('Report reason')
+  const reason = window.prompt('举报原因')
   if (!reason?.trim()) return
   try {
     await reportMoment(moment.momentId, reason.trim())
-    notice.value = 'Report submitted'
+    notice.value = '举报已提交'
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Report failed'
+    notice.value = error instanceof Error ? error.message : '举报失败'
   }
 }
 
@@ -618,7 +618,7 @@ async function openNotification(notification: MomentNotification) {
       notification.read = 1
       unreadNotifications.value = Math.max(0, unreadNotifications.value - 1)
     } catch (error) {
-      notice.value = error instanceof Error ? error.message : 'Mark notification failed'
+      notice.value = error instanceof Error ? error.message : '标记通知失败'
     }
   }
   focusRelatedMoment(notification.relatedId)
@@ -630,12 +630,12 @@ async function markAllNotificationsRead() {
     notifications.value = notifications.value.map((notification) => ({ ...notification, read: 1 }))
     unreadNotifications.value = 0
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Mark notifications failed'
+    notice.value = error instanceof Error ? error.message : '标记全部通知失败'
   }
 }
 
 async function reviewReport(report: MomentReport, status: number, deleteMoment: boolean) {
-  const note = window.prompt(deleteMoment ? 'Handle note for removal' : 'Handle note for rejection', '')
+  const note = window.prompt(deleteMoment ? '移除处理说明' : '驳回处理说明', '')
   if (note === null) return
   try {
     await reviewMomentReport(report.reportId, { status, handleNote: note.trim(), deleteMoment })
@@ -643,9 +643,9 @@ async function reviewReport(report: MomentReport, status: number, deleteMoment: 
     if (deleteMoment) {
       moments.value = moments.value.filter((item) => item.momentId !== report.momentId)
     }
-    notice.value = 'Report reviewed'
+    notice.value = '举报已处理'
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Review report failed'
+    notice.value = error instanceof Error ? error.message : '处理举报失败'
   }
 }
 
@@ -657,7 +657,7 @@ async function focusRelatedMoment(relatedId: number | null) {
       target = await getMoment(relatedId)
       moments.value = [target, ...moments.value]
     } catch (error) {
-      notice.value = error instanceof Error ? error.message : 'Related moment unavailable'
+      notice.value = error instanceof Error ? error.message : '相关动态不可用'
       return
     }
   }
@@ -690,11 +690,12 @@ function formatTime(value: string) {
 .moments-workspace {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
-  max-width: 1220px;
+  min-height: 100%;
+  height: 100%;
+  width: 100%;
   background: #fff;
   border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 18px 48px rgba(17, 34, 68, 0.08);
 }
@@ -1019,7 +1020,7 @@ function formatTime(value: string) {
   display: grid;
   gap: 10px;
   background: #f7f9fc;
-  border-radius: 8px;
+  border-radius: 16px;
   padding: 12px;
 }
 
@@ -1129,7 +1130,7 @@ function formatTime(value: string) {
 .image-lightbox img {
   max-width: min(960px, 96vw);
   max-height: 90vh;
-  border-radius: 8px;
+  border-radius: 16px;
 }
 
 @media (max-width: 900px) {
@@ -1143,3 +1144,8 @@ function formatTime(value: string) {
   }
 }
 </style>
+
+
+
+
+

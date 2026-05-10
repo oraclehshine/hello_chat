@@ -9,11 +9,14 @@ export function createChatSocket(onMessage: (event: ChatSocketEvent) => void) {
   if (!token) {
     return null
   }
-  const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8083/api/v1'
-  const wsBase = apiBase
-    .replace(/^http:\/\//, 'ws://')
-    .replace(/^https:\/\//, 'wss://')
-    .replace(/\/api\/v1\/?$/, '')
+
+  const configuredApiBase = import.meta.env.VITE_API_BASE_URL
+  const wsBase = configuredApiBase
+    ? configuredApiBase
+        .replace(/^http:\/\//, 'ws://')
+        .replace(/^https:\/\//, 'wss://')
+        .replace(/\/api\/v1\/?$/, '')
+    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
   const socket = new WebSocket(`${wsBase}/ws/chat?token=${encodeURIComponent(token)}`)
 
   socket.addEventListener('message', (message) => {

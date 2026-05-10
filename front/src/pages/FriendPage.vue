@@ -1,155 +1,176 @@
-<template>
+﻿<template>
   <section class="friend-workspace">
-    <aside class="friend-sidebar">
-      <header class="friend-header">
-        <div>
-          <h2>Friends</h2>
-          <p>Requests, contacts, and blocks</p>
-        </div>
-        <button class="icon-button" :disabled="loading" @click="loadAll">Refresh</button>
-      </header>
+    <header class="friend-topbar">
+      <div>
+        <h2>好友</h2>
+        <p>{{ friends.length }} 位联系人，{{ receivedRequests.length }} 条待处理请求</p>
+      </div>
+      <div class="friend-top-actions">
+        <label class="presence-inline">
+          <span>在线状态</span>
+          <select v-model="presenceStatus" @change="() => savePresence()">
+            <option value="online">在线</option>
+            <option value="offline">离线</option>
+            <option value="busy">忙碌</option>
+            <option value="invisible">隐身</option>
+          </select>
+        </label>
+        <button class="secondary-btn compact" :disabled="loading" @click="loadAll">刷新</button>
+        <button class="primary-btn compact request-entry" type="button" @click="showFriendTools = true">
+          添加/请求
+          <span v-if="receivedRequests.length" class="request-dot">{{ receivedRequests.length }}</span>
+        </button>
+      </div>
+    </header>
 
-      <section class="friend-card">
-        <h3>Presence</h3>
-        <select v-model="presenceStatus" @change="() => savePresence()">
-          <option value="online">Online</option>
-          <option value="offline">Offline</option>
-          <option value="busy">Busy</option>
-          <option value="invisible">Invisible</option>
-        </select>
-        <small v-if="presence">Last active {{ formatTime(presence.lastActiveAt) }}</small>
-      </section>
+    <div v-if="notice" class="notice error">{{ notice }}</div>
 
-      <section class="friend-card">
-        <h3>Social search</h3>
-        <div class="search-row">
-          <input v-model="keyword" type="search" placeholder="Search users or groups" @keyup.enter="handleSearch" />
-          <button class="secondary-btn compact" :disabled="searching" @click="handleSearch">
-            {{ searching ? '...' : 'Search' }}
-          </button>
-        </div>
-        <div v-if="searchHistory.length" class="history-list">
-          <button v-for="item in searchHistory" :key="item.historyId" type="button" @click="searchFromHistory(item.keyword)">
-            {{ item.keyword }}
-          </button>
-        </div>
-        <div v-if="searchResults.length" class="user-list">
-          <button v-for="user in searchResults" :key="user.userId" type="button" @click="requestFriend(user)">
-            <span class="avatar">
-              <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" />
-              <span v-else>{{ initials(user.nickname || user.email) }}</span>
-            </span>
-            <span>
-              <strong>{{ user.nickname || user.email }}</strong>
-              <small>{{ user.email }}</small>
-            </span>
-          </button>
-        </div>
-        <div v-if="groupResults.length" class="request-list">
-          <article v-for="group in groupResults" :key="group.groupId">
-            <strong>{{ group.groupName }}</strong>
-            <p>{{ group.description || `${group.memberCount} members` }}</p>
-            <button @click="requestGroup(group.groupId)">Request join</button>
-          </article>
-        </div>
-      </section>
+    <main class="friend-main-grid">
+      <section class="friend-panel contacts-panel">
+        <header class="section-header">
+          <div>
+            <h3>我的好友</h3>
+            <p>{{ presence ? `最后活跃 ${formatTime(presence.lastActiveAt)}` : '好友列表和常用操作' }}</p>
+          </div>
+        </header>
 
-      <section class="friend-card">
-        <h3>Recommendations</h3>
-        <div v-if="recommendedFriends.length" class="user-list">
-          <button v-for="user in recommendedFriends" :key="user.userId" type="button" @click="requestFriend(user)">
-            <span class="avatar">
-              <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" />
-              <span v-else>{{ initials(user.nickname || user.email) }}</span>
+        <div v-if="loading" class="empty-state large">好友加载中...</div>
+        <div v-else-if="!friends.length" class="empty-state large">暂无好友</div>
+        <div v-else class="friend-grid">
+          <article v-for="friend in sortedFriends" :key="friend.userId" class="friend-item">
+            <span class="avatar large">
+              <img v-if="friend.avatarUrl" :src="friend.avatarUrl" alt="" />
+              <span v-else>{{ initials(displayName(friend)) }}</span>
             </span>
-            <span>
-              <strong>{{ user.nickname || user.email }}</strong>
-              <small>{{ user.email }}</small>
-            </span>
-          </button>
-        </div>
-        <div v-if="recommendedGroups.length" class="topic-list">
-          <button v-for="group in recommendedGroups" :key="group.groupId" type="button" @click="requestGroup(group.groupId)">
-            {{ group.groupName }}
-          </button>
-        </div>
-        <div v-if="recommendedTopics.length" class="topic-list">
-          <button v-for="topic in recommendedTopics" :key="topic.tag" type="button" @click="searchTopic(topic.tag)">
-            #{{ topic.tag }} {{ topic.momentCount }}
-          </button>
-        </div>
-      </section>
-
-      <section class="friend-card">
-        <h3>Received requests</h3>
-        <div v-if="!receivedRequests.length" class="empty-state">No pending requests</div>
-        <div v-else class="request-list">
-          <article v-for="request in receivedRequests" :key="request.requestId">
-            <strong>{{ request.requesterNickname || request.requesterEmail }}</strong>
-            <p>{{ request.remark || 'No message' }}</p>
-            <div class="row-actions">
-              <button @click="approveRequest(request)">Approve</button>
-              <button class="danger" @click="rejectRequest(request)">Reject</button>
+            <div class="friend-info">
+              <h3>{{ displayName(friend) }}</h3>
+              <p>{{ friend.email }}</p>
+              <small>{{ friend.friendGroup || '默认分组' }} {{ friend.star ? '| 星标' : '' }}</small>
+            </div>
+            <div class="friend-actions">
+              <button @click="editFriend(friend)">编辑</button>
+              <button @click="toggleStar(friend)">{{ friend.star ? '取消星标' : '星标' }}</button>
+              <button @click="blockFriend(friend)">拉黑</button>
+              <button class="danger" @click="removeFriend(friend)">删除</button>
             </div>
           </article>
         </div>
       </section>
 
-      <section class="friend-card">
-        <h3>Sent requests</h3>
-        <div v-if="!sentRequests.length" class="empty-state">No sent requests</div>
-        <div v-else class="request-list">
-          <article v-for="request in sentRequests" :key="request.requestId">
-            <strong>{{ request.receiverNickname || request.receiverEmail }}</strong>
-            <p>{{ requestStatus(request.status) }}</p>
-          </article>
-        </div>
-      </section>
-    </aside>
-
-    <main class="friend-main">
-      <header class="section-header">
-        <div>
-          <h2>My friends</h2>
-          <p>{{ friends.length }} contacts</p>
-        </div>
-      </header>
-
-      <div v-if="notice" class="notice error">{{ notice }}</div>
-      <div v-if="loading" class="empty-state large">Loading friends...</div>
-      <div v-else-if="!friends.length" class="empty-state large">No friends yet</div>
-
-      <div v-else class="friend-grid">
-        <article v-for="friend in sortedFriends" :key="friend.userId" class="friend-item">
-          <span class="avatar large">
-            <img v-if="friend.avatarUrl" :src="friend.avatarUrl" alt="" />
-            <span v-else>{{ initials(displayName(friend)) }}</span>
-          </span>
-          <div class="friend-info">
-            <h3>{{ displayName(friend) }}</h3>
-            <p>{{ friend.email }}</p>
-            <small>{{ friend.friendGroup || 'Default' }} {{ friend.star ? '| Starred' : '' }}</small>
+      <section class="friend-panel blocked-panel">
+        <header class="section-header">
+          <div>
+            <h3>黑名单</h3>
+            <p>{{ blockedUsers.length }} 位用户</p>
           </div>
-          <div class="friend-actions">
-            <button @click="editFriend(friend)">Edit</button>
-            <button @click="toggleStar(friend)">{{ friend.star ? 'Unstar' : 'Star' }}</button>
-            <button @click="blockFriend(friend)">Block</button>
-            <button class="danger" @click="removeFriend(friend)">Delete</button>
-          </div>
-        </article>
-      </div>
-
-      <section class="blocked-panel">
-        <h2>Blocked users</h2>
-        <div v-if="!blockedUsers.length" class="empty-state">No blocked users</div>
+        </header>
+        <div v-if="!blockedUsers.length" class="empty-state">暂无黑名单用户</div>
         <div v-else class="blocked-list">
           <article v-for="user in blockedUsers" :key="user.userId">
             <span>{{ user.nickname || user.email }}</span>
-            <button @click="unblock(user.userId)">Unblock</button>
+            <button @click="unblock(user.userId)">解除拉黑</button>
           </article>
         </div>
       </section>
     </main>
+
+    <div v-if="showFriendTools" class="tool-overlay" @click.self="showFriendTools = false">
+      <aside class="friend-tool-drawer">
+        <header class="drawer-header">
+          <div>
+            <h2>添加好友与请求</h2>
+            <p>搜索陌生人、加入群组、处理好友请求</p>
+          </div>
+          <button class="secondary-btn compact" type="button" @click="showFriendTools = false">关闭</button>
+        </header>
+
+        <section class="friend-card">
+          <h3>搜索好友/群组</h3>
+          <div class="search-row">
+            <input v-model="keyword" type="search" placeholder="搜索用户或群组" @keyup.enter="handleSearch" />
+            <button class="secondary-btn compact" :disabled="searching" @click="handleSearch">
+              {{ searching ? '...' : '搜索' }}
+            </button>
+          </div>
+          <div v-if="searchHistory.length" class="history-list">
+            <button v-for="item in searchHistory" :key="item.historyId" type="button" @click="searchFromHistory(item.keyword)">
+              {{ item.keyword }}
+            </button>
+          </div>
+          <div v-if="searchResults.length" class="user-list">
+            <button v-for="user in searchResults" :key="user.userId" type="button" @click="requestFriend(user)">
+              <span class="avatar">
+                <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" />
+                <span v-else>{{ initials(user.nickname || user.email) }}</span>
+              </span>
+              <span>
+                <strong>{{ user.nickname || user.email }}</strong>
+                <small>{{ user.email }}</small>
+              </span>
+            </button>
+          </div>
+          <div v-if="groupResults.length" class="request-list">
+            <article v-for="group in groupResults" :key="group.groupId">
+              <strong>{{ group.groupName }}</strong>
+              <p>{{ group.description || `${group.memberCount} 名成员` }}</p>
+              <button @click="requestGroup(group.groupId)">申请加入</button>
+            </article>
+          </div>
+        </section>
+
+        <section class="friend-card">
+          <h3>推荐</h3>
+          <div v-if="recommendedFriends.length" class="user-list">
+            <button v-for="user in recommendedFriends" :key="user.userId" type="button" @click="requestFriend(user)">
+              <span class="avatar">
+                <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" />
+                <span v-else>{{ initials(user.nickname || user.email) }}</span>
+              </span>
+              <span>
+                <strong>{{ user.nickname || user.email }}</strong>
+                <small>{{ user.email }}</small>
+              </span>
+            </button>
+          </div>
+          <div v-if="recommendedGroups.length" class="topic-list">
+            <button v-for="group in recommendedGroups" :key="group.groupId" type="button" @click="requestGroup(group.groupId)">
+              {{ group.groupName }}
+            </button>
+          </div>
+          <div v-if="recommendedTopics.length" class="topic-list">
+            <button v-for="topic in recommendedTopics" :key="topic.tag" type="button" @click="searchTopic(topic.tag)">
+              #{{ topic.tag }} {{ topic.momentCount }}
+            </button>
+          </div>
+        </section>
+
+        <section class="friend-card">
+          <h3>收到的请求</h3>
+          <div v-if="!receivedRequests.length" class="empty-state">暂无待处理请求</div>
+          <div v-else class="request-list">
+            <article v-for="request in receivedRequests" :key="request.requestId">
+              <strong>{{ request.requesterNickname || request.requesterEmail }}</strong>
+              <p>{{ request.remark || '无附言' }}</p>
+              <div class="row-actions">
+                <button @click="approveRequest(request)">同意</button>
+                <button class="danger" @click="rejectRequest(request)">拒绝</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="friend-card">
+          <h3>已发送请求</h3>
+          <div v-if="!sentRequests.length" class="empty-state">暂无已发送请求</div>
+          <div v-else class="request-list">
+            <article v-for="request in sentRequests" :key="request.requestId">
+              <strong>{{ request.receiverNickname || request.receiverEmail }}</strong>
+              <p>{{ requestStatus(request.status) }}</p>
+            </article>
+          </div>
+        </section>
+      </aside>
+    </div>
   </section>
 </template>
 
@@ -200,6 +221,7 @@ const notice = ref('')
 const loading = ref(false)
 const searching = ref(false)
 const currentUserId = ref(0)
+const showFriendTools = ref(false)
 
 const sortedFriends = computed(() => [...friends.value].sort((left, right) => right.star - left.star))
 
@@ -227,7 +249,7 @@ async function loadAll() {
     blockedUsers.value = blocks
     await Promise.all([loadSearchHistory(), loadRecommendations(), savePresence(false)])
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load friends failed'
+    notice.value = error instanceof Error ? error.message : '加载好友失败'
   } finally {
     loading.value = false
   }
@@ -246,7 +268,7 @@ async function handleSearch() {
     groupResults.value = result.groups
     searchHistory.value = await listSearchHistory()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Search failed'
+    notice.value = error instanceof Error ? error.message : '搜索失败'
   } finally {
     searching.value = false
   }
@@ -263,37 +285,37 @@ async function searchTopic(tag: string) {
 }
 
 async function requestFriend(user: UserSearchItem) {
-  const remark = window.prompt(`Send friend request to ${user.nickname || user.email}`, '')
+  const remark = window.prompt(`向 ${user.nickname || user.email} 发送好友请求`, '')
   if (remark === null) return
   try {
     await sendFriendRequest(user.userId, remark)
     searchResults.value = searchResults.value.filter((item) => item.userId !== user.userId)
     sentRequests.value = await listSentFriendRequests()
-    notice.value = 'Friend request sent'
+    notice.value = '好友请求已发送'
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Send request failed'
+    notice.value = error instanceof Error ? error.message : '发送请求失败'
   }
 }
 
 async function requestGroup(groupId: number) {
-  const message = window.prompt('Join request message', '')
+  const message = window.prompt('入群申请说明', '')
   if (message === null) return
   try {
     await requestJoinGroup(groupId, message)
     groupResults.value = groupResults.value.filter((group) => group.groupId !== groupId)
     recommendedGroups.value = recommendedGroups.value.filter((group) => group.groupId !== groupId)
-    notice.value = 'Group join request sent'
+    notice.value = '入群申请已发送'
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Join request failed'
+    notice.value = error instanceof Error ? error.message : '入群申请失败'
   }
 }
 
 async function savePresence(showNotice = true) {
   try {
     presence.value = await updatePresence(presenceStatus.value)
-    if (showNotice) notice.value = 'Presence updated'
+    if (showNotice) notice.value = '在线状态已更新'
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Presence update failed'
+    notice.value = error instanceof Error ? error.message : '在线状态更新失败'
   }
 }
 
@@ -313,7 +335,7 @@ async function approveRequest(request: FriendRequest) {
     await approveFriendRequest(request.requestId)
     await loadAll()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Approve failed'
+    notice.value = error instanceof Error ? error.message : '同意请求失败'
   }
 }
 
@@ -322,19 +344,19 @@ async function rejectRequest(request: FriendRequest) {
     await rejectFriendRequest(request.requestId)
     receivedRequests.value = receivedRequests.value.filter((item) => item.requestId !== request.requestId)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Reject failed'
+    notice.value = error instanceof Error ? error.message : '拒绝请求失败'
   }
 }
 
 async function editFriend(friend: Friend) {
-  const remarkName = window.prompt('Remark name', friend.remarkName || '')
+  const remarkName = window.prompt('好友备注', friend.remarkName || '')
   if (remarkName === null) return
-  const friendGroup = window.prompt('Friend group', friend.friendGroup || 'Default')
+  const friendGroup = window.prompt('好友分组', friend.friendGroup || '默认分组')
   if (friendGroup === null) return
   try {
     replaceFriend(await updateFriend(friend.userId, { remarkName, friendGroup }))
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Update friend failed'
+    notice.value = error instanceof Error ? error.message : '更新好友失败'
   }
 }
 
@@ -342,27 +364,27 @@ async function toggleStar(friend: Friend) {
   try {
     replaceFriend(await updateFriend(friend.userId, { star: friend.star !== 1 }))
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Star friend failed'
+    notice.value = error instanceof Error ? error.message : '星标好友失败'
   }
 }
 
 async function removeFriend(friend: Friend) {
-  if (!window.confirm(`Delete ${displayName(friend)} from friends?`)) return
+  if (!window.confirm(`确认删除好友 ${displayName(friend)}？`)) return
   try {
     await deleteFriend(friend.userId)
     friends.value = friends.value.filter((item) => item.userId !== friend.userId)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Delete friend failed'
+    notice.value = error instanceof Error ? error.message : '删除好友失败'
   }
 }
 
 async function blockFriend(friend: Friend) {
-  if (!window.confirm(`Block ${displayName(friend)}?`)) return
+  if (!window.confirm(`确认拉黑 ${displayName(friend)}？`)) return
   try {
     await blockUser(friend.userId)
     await loadAll()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Block user failed'
+    notice.value = error instanceof Error ? error.message : '拉黑用户失败'
   }
 }
 
@@ -371,7 +393,7 @@ async function unblock(userId: number) {
     await unblockUser(userId)
     blockedUsers.value = blockedUsers.value.filter((user) => user.userId !== userId)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Unblock failed'
+    notice.value = error instanceof Error ? error.message : '解除拉黑失败'
   }
 }
 
@@ -388,9 +410,9 @@ function initials(value: string) {
 }
 
 function requestStatus(status: number) {
-  if (status === 2) return 'Approved'
-  if (status === 3) return 'Rejected'
-  return 'Pending'
+  if (status === 2) return '已同意'
+  if (status === 3) return '已拒绝'
+  return '待处理'
 }
 
 function formatTime(value: string) {
@@ -400,40 +422,37 @@ function formatTime(value: string) {
 
 <style scoped>
 .friend-workspace {
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
-  max-width: 1220px;
-  background: #fff;
-  border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  display: flex;
   overflow: hidden;
+  border: 1px solid #d8e0ea;
+  border-radius: 16px;
+  background: #fff;
   box-shadow: 0 18px 48px rgba(17, 34, 68, 0.08);
+  flex-direction: column;
 }
 
-.friend-sidebar {
-  border-right: 1px solid #d8e0ea;
-  background: #f7f9fc;
-  padding: 16px;
-  display: grid;
-  align-content: start;
-  gap: 14px;
-}
-
-.friend-header,
+.friend-topbar,
 .section-header,
 .search-row,
 .row-actions,
 .friend-actions,
-.blocked-list article {
+.blocked-list article,
+.friend-top-actions {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.friend-header,
+.friend-topbar,
 .section-header {
   justify-content: space-between;
+}
+
+.friend-topbar {
+  min-height: 74px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #d8e0ea;
+  background: #fff;
 }
 
 h2,
@@ -448,34 +467,65 @@ small,
   color: #53627d;
 }
 
-.friend-card,
-.blocked-panel {
-  display: grid;
-  gap: 10px;
+.presence-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #53627d;
+  font-size: 13px;
 }
 
-.friend-card select {
-  border: 1px solid #d8e0ea;
-  border-radius: 6px;
-  background: #fff;
-  padding: 10px 12px;
-}
-
+.presence-inline select,
 .search-row input {
-  flex: 1;
   min-width: 0;
   border: 1px solid #d8e0ea;
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px 12px;
+}
+
+.friend-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-height: 0;
+  flex: 1;
+  gap: 16px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.friend-panel {
+  min-height: 0;
+  border: 1px solid #d8e0ea;
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+  overflow: auto;
+}
+
+.contacts-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.friend-card {
+  display: grid;
+  gap: 10px;
 }
 
 .user-list,
 .request-list,
 .blocked-list,
 .history-list,
-.topic-list {
+.topic-list,
+.friend-grid {
   display: grid;
-  gap: 8px;
+  gap: 10px;
+}
+
+.friend-grid {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
 
 .history-list,
@@ -488,9 +538,9 @@ small,
 .blocked-list article,
 .friend-item {
   border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fff;
-  padding: 10px;
+  padding: 12px;
 }
 
 .user-list button {
@@ -500,23 +550,9 @@ small,
   cursor: pointer;
 }
 
-.friend-main {
-  padding: 18px;
-  min-width: 0;
-  overflow: auto;
-  display: grid;
-  align-content: start;
-  gap: 18px;
-}
-
-.friend-grid {
-  display: grid;
-  gap: 10px;
-}
-
 .friend-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
 }
@@ -533,13 +569,14 @@ small,
 }
 
 .friend-actions {
+  grid-column: 1 / -1;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 button {
   border: 0;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #e9eef6;
   color: #2457c5;
   cursor: pointer;
@@ -549,6 +586,22 @@ button {
 button.danger,
 .danger {
   color: #9b2626;
+}
+
+.request-entry {
+  position: relative;
+}
+
+.request-dot {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  place-items: center;
+  font-size: 11px;
 }
 
 .avatar {
@@ -581,23 +634,42 @@ button.danger,
   text-align: center;
 }
 
-@media (max-width: 900px) {
-  .friend-workspace {
+.tool-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.friend-tool-drawer {
+  display: grid;
+  width: min(520px, 94vw);
+  align-content: start;
+  gap: 16px;
+  overflow: auto;
+  padding: 18px;
+  background: #f7f9fc;
+  box-shadow: -18px 0 48px rgba(15, 23, 42, 0.14);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 980px) {
+  .friend-main-grid {
     grid-template-columns: 1fr;
   }
 
-  .friend-sidebar {
-    border-right: 0;
-    border-bottom: 1px solid #d8e0ea;
-  }
-
-  .friend-item {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .friend-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
+  .friend-topbar,
+  .friend-top-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

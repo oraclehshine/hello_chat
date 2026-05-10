@@ -24,6 +24,12 @@ public class WebSocketConfig implements WebSocketConfigurer {
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(chatWebSocketHandler, "/ws/chat")
             .addInterceptors(new TokenHandshakeInterceptor(tokenProvider))
-            .setAllowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*");
+            .setAllowedOriginPatterns(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://192.168.*:*",
+                "http://10.*:*",
+                "http://172.*:*"
+            );
     }
 }

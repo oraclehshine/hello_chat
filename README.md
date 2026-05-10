@@ -1,111 +1,347 @@
-# Hello Chat 代码目录说明
+﻿# Hello Chat
+
+Hello Chat 是一个基于 Web 的综合聊天系统，来源于 `hello_chat` 目录中的需求、API、数据库、UI/UX 和环境设计文档，并在 `code` 目录中完成前后端实现。项目覆盖邮箱注册登录、个人资料、好友关系、单聊、群聊、朋友圈、搜索推荐、通知、文件上传、WebSocket 推送、Docker 部署和自动化测试等功能。
+
+## 项目定位
+
+本项目以“真实网络聊天应用”为目标，重点实现聊天系统的完整业务闭环，而不是单一页面演示。系统既包含用户认证、好友关系、会话消息、群组权限、朋友圈互动等应用功能，也包含数据库迁移、环境变量、容器编排、健康检查、开发代理、局域网调试和测试脚本等工程能力。
+
+## 技术栈
+
+- 前端：Vue 3、Vite、Vue Router、Pinia、Axios、TypeScript
+- 后端：Java 17、Spring Boot 3.0.3、Spring Data JPA、Flyway、WebSocket
+- 数据库：PostgreSQL
+- 缓存：Redis
+- 消息队列：Kafka + Zookeeper
+- 文件存储：阿里云 OSS 配置接口
+- 部署：Docker、Docker Compose、Nginx
+- 测试：Node.js E2E 脚本、Maven 编译测试、前端构建测试
 
 ## 目录结构
 
 ```text
 code/
-├── backend/   # Java 17 + Spring Boot 3.0.3 后端
-└── front/     # Vue 3 + Vite 前端
+├── backend/                  # Spring Boot 后端
+│   ├── src/main/java/         # Controller、Service、Repository、Entity、DTO、WebSocket
+│   ├── src/main/resources/    # application.yml 与 Flyway 数据库迁移
+│   └── pom.xml
+├── front/                    # Vue 3 前端
+│   ├── src/api/               # Axios API 封装与 WebSocket 客户端
+│   ├── src/pages/             # 登录、注册、首页、好友、单聊、群聊、朋友圈、个人资料
+│   ├── src/styles/            # 全局 Web 工作台样式
+│   └── vite.config.ts         # 开发服务与代理配置
+├── scripts/                  # 启动与自动化测试脚本
+├── docker-compose.yml         # PostgreSQL、Redis、Kafka、前后端容器编排
+├── .env.example               # 环境变量模板
+└── README.md
 ```
 
-## 技术栈
+## 需求文档摘要
 
-- 前端：Vue 3 + Vite + Vue Router + Pinia
-- 后端：Java 17 + Spring Boot 3.0.3
-- 数据库：PostgreSQL
-- 缓存：Redis
-- 消息队列：Kafka
+`hello_chat/需求文档.md` 将系统划分为用户管理、单聊、群聊、朋友圈和社交功能模块。
 
-## 本地环境
+### 用户管理
 
-- PostgreSQL：localhost:5433
-- 用户名：postgres
-- 密码：wang5874579%
-- Redis：localhost:6379（无密码）
-- Kafka：localhost:9092
+- 邮箱注册、邮箱验证码、密码复杂度校验。
+- 登录、刷新 Token、退出登录、密码找回。
+- 个人资料维护，包括昵称、头像、签名、电话、邮箱等。
+- 账户安全操作，如修改密码、修改邮箱。
 
-## 启动顺序
+### 单聊
 
-1. 启动 PostgreSQL、Redis、Kafka
-2. 启动 backend
-3. 启动 front
+- 好友之间创建一对一会话。
+- 支持文本、图片、文件等消息类型。
+- 支持消息历史、撤回、删除、清空、搜索和置顶。
+- 使用 WebSocket 推送在线消息。
 
-## 本地启动
+### 群聊
 
-### 后端
+- 创建群组、邀请成员、移除成员、退出群组。
+- 群主、管理员、普通成员分级权限。
+- 群公告、群通知、入群审批、禁言、群昵称。
+- 群消息、@提醒、引用回复和已读状态。
 
-```bash
-cd backend
-mvn -s .mvn-local-settings.xml '-Dmaven.repo.local=.m2repo' spring-boot:run
+### 朋友圈
+
+- 发布文字、图片、视频、位置、心情、话题动态。
+- 支持公开、好友可见、私密、指定人可见。
+- 支持时间线、个人主页、点赞、评论、收藏。
+- 支持动态编辑、删除、举报和审核。
+
+### 社交发现
+
+- 在线状态和最后活跃时间。
+- 用户搜索、群组搜索和搜索历史。
+- 推荐好友、推荐群组和热门话题。
+
+## API 设计摘要
+
+API 采用 REST 风格，统一前缀：
+
+```text
+/api/v1
 ```
 
-### 前端
+统一请求头：
 
-```bash
-cd front
-npm install
-npm run dev
+```http
+Authorization: Bearer <access_token>
+Content-Type: application/json
+Accept: application/json
 ```
 
-## 容器部署
+统一响应结构：
 
-1. 复制 `.env.example` 为 `.env`
-2. 修改 `.env` 中的数据库密码、JWT 密钥和 OSS 凭据
-3. 启动服务
-
-```bash
-docker compose up --build
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {},
+  "timestamp": 1715232000000
+}
 ```
 
-服务入口：
-- 前端：http://localhost:3000
-- 后端：http://localhost:8083
-- 健康检查：http://localhost:8083/actuator/health
+主要接口分组：
 
-## 当前开发阶段
+- `/auth/*`：注册、登录、验证码、刷新 Token、退出登录、密码找回。
+- `/users/*`：个人资料、好友申请、好友列表、黑名单、在线状态。
+- `/chats/*`：单聊会话、私聊消息、消息撤回和删除。
+- `/groups/*`：群组、群成员、群消息、群公告、群通知。
+- `/moments/*`：朋友圈动态、点赞、评论、收藏、举报。
+- `/social/*`：综合搜索、推荐、热门话题、搜索历史。
+- `/files/*`：文件上传与资源访问。
+- `/ws/chat`：聊天 WebSocket 推送。
 
-- 第 6 阶段：优化和部署（Phase 6）
-- 已完成：
-  - Phase 1-5 核心业务功能
-  - 朋友圈动态发布、编辑、删除、分页浏览
-  - 点赞/取消点赞、评论/删除评论、收藏/取消收藏
-  - 个人动态流与收藏流
-  - 动态举报、审核处理、通知中心（未读计数与已读管理）
-  - 在线状态、综合搜索、搜索历史和推荐系统
-  - 环境变量化配置、Actuator 健康检查、Docker/Compose 部署骨架
-  - 认证基础单元测试
+## 数据库设计摘要
 
-## Broad Smoke Test
+项目使用 PostgreSQL 保存核心业务数据，并通过 Flyway 迁移脚本管理结构演进。迁移脚本位于：
 
-Run this after PostgreSQL, Redis, Kafka, and the backend are available. The script creates unique temporary users and covers auth, profiles, friends, private chat, group chat, Phase 5 social search/recommendations, moments, notifications, and password flows.
-
-```bash
-node scripts/e2e-smoke.mjs
+```text
+backend/src/main/resources/db/migration
 ```
 
-Optional environment variables:
+主要数据模型包括：
 
-```bash
-API_BASE_URL=http://localhost:8083/api/v1 node scripts/e2e-smoke.mjs
-SMOKE_CONTINUE=1 node scripts/e2e-smoke.mjs
+- User：用户账号与资料。
+- AuthToken / EmailCaptcha：登录令牌与验证码。
+- Friendship / FriendRequest / UserBlock：好友关系、申请与黑名单。
+- PrivateChat / PrivateMessage：单聊会话与消息。
+- ChatGroup / GroupMember / GroupMessage / GroupNotification：群组、成员、群消息和通知。
+- Moment / MomentComment / MomentLike / MomentCollect / MomentReport：朋友圈动态、评论、点赞、收藏和举报。
+- SearchHistory / UserPresence：搜索历史与在线状态。
+- FileAsset：上传文件元信息。
+
+## 前端实现摘要
+
+前端位于 `front`，采用 Vue 3 单页应用结构。
+
+- `src/api/http.ts`：统一 Axios 实例，自动附加 Token。
+- `src/api/chatSocket.ts`：WebSocket 客户端连接与消息事件解析。
+- `src/router/index.ts`：页面路由和登录态跳转。
+- `src/pages/LoginPage.vue`：登录页。
+- `src/pages/RegisterPage.vue`：注册页与验证码流程。
+- `src/pages/HomePage.vue`：消息工作台概览。
+- `src/pages/FriendPage.vue`：好友、搜索、请求和黑名单。
+- `src/pages/ChatPage.vue`：单聊会话。
+- `src/pages/GroupPage.vue`：群聊管理与群消息。
+- `src/pages/MomentPage.vue`：朋友圈动态流。
+- `src/pages/ProfilePage.vue`：Web 适配的个人资料页。
+
+开发环境中，Vite 绑定 `0.0.0.0:3000`，并代理：
+
+```text
+/api/v1 -> http://localhost:8083
+/ws     -> ws://localhost:8083
 ```
 
-PowerShell example:
+这样局域网设备访问 `http://192.168.x.x:3000` 时，请求会由 Vite 转发到本机后端，避免其他设备把 `localhost` 解析成自身导致 Network error。
+
+## 后端实现摘要
+
+后端位于 `backend`，采用 Spring Boot 分层架构。
+
+- `controller`：提供 REST API。
+- `service` / `service.impl`：实现认证、用户、好友、单聊、群聊、朋友圈、文件等业务逻辑。
+- `repository`：使用 Spring Data JPA 访问 PostgreSQL。
+- `entity`：定义业务实体。
+- `dto`：定义请求与响应对象。
+- `common`：统一响应、异常处理、Token、密码编码、当前用户解析。
+- `websocket`：WebSocket 连接管理和 Token 握手鉴权。
+- `config`：CORS、OSS、WebSocket 等配置。
+
+核心配置使用环境变量注入：
+
+```yaml
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/hello_chat}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:wang5874579%}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+server:
+  port: ${SERVER_PORT:8083}
+```
+
+## 环境变量
+
+复制 `.env.example` 为 `.env`，根据本机环境修改：
+
+```env
+DB_URL=jdbc:postgresql://localhost:5433/hello_chat
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+REDIS_HOST=localhost
+REDIS_PORT=6379
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+SERVER_PORT=8083
+HELLO_CHAT_AUTH_SECRET=change-me
+ALIYUN_OSS_ACCESS_KEY_ID=
+ALIYUN_OSS_ACCESS_KEY_SECRET=
+```
+
+注意：真实密钥和密码不要提交到公开仓库。
+
+## 本地开发启动
+
+### 1. 启动依赖服务
 
 ```powershell
-$env:API_BASE_URL='http://localhost:8083/api/v1'; node scripts/e2e-smoke.mjs
+docker compose up -d postgres redis zookeeper kafka
 ```
 
-To start the backend with values loaded from `.env`:
+### 2. 启动后端
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-backend.ps1
 ```
 
-Detailed module regression test:
+或手动执行：
+
+```powershell
+cd backend
+mvn -s .mvn-local-settings.xml "-Dmaven.repo.local=.m2repo" spring-boot:run
+```
+
+### 3. 启动前端
+
+```powershell
+cd front
+npm install
+npm run dev -- --host 0.0.0.0 --port 3000
+```
+
+访问地址：
+
+```text
+http://localhost:3000
+```
+
+局域网访问地址以 Vite 输出为准，例如：
+
+```text
+http://192.168.x.x:3000
+```
+
+## Docker Compose 部署
+
+完整容器化启动：
+
+```powershell
+docker compose up --build
+```
+
+服务端口：
+
+- 前端：`http://localhost:3000`
+- 后端：`http://localhost:8083`
+- PostgreSQL：`localhost:5433`
+- Redis：`localhost:6379`
+- Kafka：`localhost:9092`
+- 健康检查：`http://localhost:8083/actuator/health`
+
+## 测试与验证
+
+### 前端构建
+
+```powershell
+cd front
+npm run build
+```
+
+### 后端编译
+
+```powershell
+cd backend
+mvn -s .mvn-local-settings.xml "-Dmaven.repo.local=.m2repo" -q -DskipTests compile
+```
+
+### 冒烟测试
+
+```powershell
+node scripts/e2e-smoke.mjs
+```
+
+该脚本会创建临时用户并覆盖认证、资料、好友、单聊、群聊、朋友圈、通知、搜索推荐和密码流程。
+
+### 模块级回归测试
 
 ```powershell
 node scripts/e2e-modules.mjs
 ```
 
-It covers auth, user/friend, social, private chat, group, moment, file upload behavior, and cleanup with both success and expected-failure cases.
+该脚本按认证、用户好友、社交、单聊、群聊、朋友圈、文件上传等模块进行更细粒度验证，并包含部分预期失败场景。
+
+## 常见问题
+
+### 其他设备访问出现 Network error
+
+原因通常是前端把接口写成 `http://localhost:8083`。其他设备访问时，`localhost` 指向设备自身，不是运行后端的电脑。
+
+当前项目已通过 Vite 代理解决：前端默认请求 `/api/v1`，再由开发服务器转发到本机后端。
+
+### 后端连接 PostgreSQL 失败
+
+如果出现：
+
+```text
+Connection to localhost:5433 refused
+```
+
+请先确认容器和端口：
+
+```powershell
+docker compose ps
+netstat -ano | Select-String ':5433|:6379|:9092'
+```
+
+### Maven 权限问题
+
+如果 Maven 尝试写入系统仓库失败，请使用项目内仓库：
+
+```powershell
+mvn -s .mvn-local-settings.xml "-Dmaven.repo.local=.m2repo" compile
+```
+
+## 与 Linux 操作系统课程的关系
+
+本项目实践了 Linux 操作系统课程中的多项核心能力：
+
+- 进程管理：前端、后端、数据库、缓存、消息队列均以独立服务进程运行。
+- 网络通信：涉及 HTTP、WebSocket、端口监听、端口映射、局域网访问和反向代理。
+- 文件系统：涉及项目目录组织、配置文件、日志文件、上传文件和数据库迁移脚本。
+- 权限与环境：使用环境变量管理密码、Token 密钥和 OSS 凭据，处理 Maven、Docker 等权限问题。
+- 服务部署：使用 Docker Compose 编排多服务，理解容器网络与服务依赖。
+- 故障排查：通过日志、健康检查、端口检测、接口测试定位问题。
+
+## 后续展望
+
+- 增加更完整的消息 ACK、离线消息和多端同步机制。
+- 增加接口限流、审计日志、敏感词过滤和内容审核能力。
+- 优化移动端适配、图片预览、消息虚拟列表和暗色模式。
+- 引入 CI/CD，在提交代码后自动运行构建和测试。
+- 增加 Prometheus、Grafana、ELK/Loki 等监控日志体系。
+- 将 Docker Compose 部署升级为 Kubernetes 编排，进一步贴近生产环境。

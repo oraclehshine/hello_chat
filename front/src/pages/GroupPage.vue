@@ -1,21 +1,21 @@
-<template>
+﻿<template>
   <section class="group-workspace">
     <aside class="group-sidebar">
       <header class="group-header">
         <div>
-          <h2>Groups</h2>
-          <p>Phase 3 group chat</p>
+          <h2>群聊</h2>
+          <p>群组会话</p>
         </div>
-        <button class="icon-button" :disabled="loadingGroups" @click="loadGroups">Refresh</button>
+        <button class="icon-button" :disabled="loadingGroups" @click="loadGroups">刷新</button>
       </header>
 
       <form class="create-group" @submit.prevent="handleCreateGroup">
-        <input v-model="newGroupName" maxlength="30" placeholder="Group name" />
-        <textarea v-model="newGroupDescription" rows="2" placeholder="Description"></textarea>
+        <input v-model="newGroupName" maxlength="30" placeholder="群名称" />
+        <textarea v-model="newGroupDescription" rows="2" placeholder="群描述"></textarea>
         <div class="member-picker">
-          <input v-model="userKeyword" placeholder="Search users to add" @keyup.enter.prevent="handleUserSearch" />
+          <input v-model="userKeyword" placeholder="搜索要添加的用户" @keyup.enter.prevent="handleUserSearch" />
           <button type="button" class="secondary-btn compact" :disabled="searchingUsers" @click="handleUserSearch">
-            {{ searchingUsers ? '...' : 'Search' }}
+            {{ searchingUsers ? '...' : '搜索' }}
           </button>
         </div>
         <div v-if="userResults.length" class="user-results">
@@ -23,7 +23,7 @@
             <span class="avatar">{{ initials(user.nickname || user.email) }}</span>
             <span>
               <strong>{{ user.nickname || user.email }}</strong>
-              <small>{{ selectedMemberIds.includes(user.userId) ? 'Selected' : user.email }}</small>
+              <small>{{ selectedMemberIds.includes(user.userId) ? '已选择' : user.email }}</small>
             </span>
           </button>
         </div>
@@ -34,20 +34,20 @@
           </span>
         </div>
         <button class="primary-btn compact" :disabled="creatingGroup || !canCreateGroup">
-          {{ creatingGroup ? 'Creating' : 'Create group' }}
+          {{ creatingGroup ? '创建中' : '创建群聊' }}
         </button>
       </form>
 
       <section class="discover-group">
         <div class="member-picker">
-          <input v-model="groupKeyword" placeholder="Search groups" @keyup.enter.prevent="handleGroupSearch" />
+          <input v-model="groupKeyword" placeholder="搜索群组" @keyup.enter.prevent="handleGroupSearch" />
           <button type="button" class="secondary-btn compact" :disabled="searchingGroups" @click="handleGroupSearch">
-            {{ searchingGroups ? '...' : 'Search' }}
+            {{ searchingGroups ? '...' : '搜索' }}
           </button>
         </div>
         <div class="member-picker">
-          <input v-model="inviteCodeDraft" placeholder="Invite code" @keyup.enter.prevent="joinByInvite" />
-          <button type="button" class="secondary-btn compact" @click="joinByInvite">Join</button>
+          <input v-model="inviteCodeDraft" placeholder="邀请码" @keyup.enter.prevent="joinByInvite" />
+          <button type="button" class="secondary-btn compact" @click="joinByInvite">加入</button>
         </div>
         <div v-if="groupResults.length" class="user-results compact-results">
           <button v-for="group in groupResults" :key="group.groupId" type="button" @click="requestJoin(group)">
@@ -57,13 +57,13 @@
             </span>
             <span>
               <strong>{{ group.groupName }}</strong>
-              <small>{{ group.memberCount }} members | Request join</small>
+              <small>{{ group.memberCount }} 名成员 | 申请加入</small>
             </span>
           </button>
         </div>
         <div class="panel-actions">
           <button type="button" class="secondary-btn compact" :disabled="loadingMyJoinRequests" @click="loadMyJoinRequests">
-            {{ loadingMyJoinRequests ? 'Loading' : 'My requests' }}
+            {{ loadingMyJoinRequests ? '加载中' : '我的申请' }}
           </button>
         </div>
         <div v-if="myJoinRequests.length" class="request-status-list">
@@ -88,12 +88,12 @@
           </span>
           <span>
             <strong>{{ group.groupName }}</strong>
-            <small>{{ group.memberCount }} members</small>
+            <small>{{ group.memberCount }} 名成员</small>
           </span>
           <span v-if="group.mentionUnreadCount > 0" class="mention-badge">@{{ group.mentionUnreadCount }}</span>
           <span v-else-if="group.unreadCount > 0" class="unread-badge">{{ group.unreadCount > 99 ? '99+' : group.unreadCount }}</span>
         </button>
-        <div v-if="!loadingGroups && !groups.length" class="empty-list">No groups yet</div>
+        <div v-if="!loadingGroups && !groups.length" class="empty-list">暂无群聊</div>
       </div>
     </aside>
 
@@ -105,21 +105,21 @@
         </span>
         <div>
           <h2>{{ activeGroup.groupName }}</h2>
-          <p>{{ activeGroup.memberCount }} members</p>
+          <p>{{ activeGroup.memberCount }} 名成员</p>
         </div>
       </header>
 
       <div v-if="notice" class="notice error">{{ notice }}</div>
 
       <div v-if="!activeGroup" class="empty-group">
-        <h2>Select a group</h2>
-        <p>Create or choose a group to start chatting.</p>
+        <h2>选择一个群聊</h2>
+        <p>创建或选择一个群，开始群聊。</p>
       </div>
 
       <div v-else class="group-chat">
         <aside class="member-panel">
           <section class="profile-box">
-            <h3>Group profile</h3>
+            <h3>群资料</h3>
             <div class="profile-avatar-row">
               <span class="avatar large-avatar">
                 <img v-if="profileAvatarPreview || activeGroup.avatarUrl" :src="profileAvatarPreview || activeGroup.avatarUrl || ''" alt="" />
@@ -143,54 +143,54 @@
               />
             </div>
             <template v-if="editingProfile">
-              <input v-model="profileNameDraft" maxlength="30" placeholder="Group name" />
-              <textarea v-model="profileDescriptionDraft" rows="3" maxlength="255" placeholder="Description"></textarea>
+              <input v-model="profileNameDraft" maxlength="30" placeholder="群名称" />
+              <textarea v-model="profileDescriptionDraft" rows="3" maxlength="255" placeholder="群描述"></textarea>
               <label class="inline-setting">
                 <input v-model="profileChatEnabledDraft" type="checkbox" />
-                Chat enabled
+                允许发言
               </label>
-              <input v-model.number="profileRecallLimitDraft" type="number" min="0" max="1440" placeholder="Recall minutes" />
+              <input v-model.number="profileRecallLimitDraft" type="number" min="0" max="1440" placeholder="撤回分钟数" />
               <div class="panel-actions split-actions">
-                <button class="secondary-btn compact" :disabled="savingProfile" @click="cancelEditGroupProfile">Cancel</button>
+                <button class="secondary-btn compact" :disabled="savingProfile" @click="cancelEditGroupProfile">取消</button>
                 <button class="primary-btn compact" :disabled="savingProfile || !profileNameDraft.trim()" @click="saveGroupProfile">
-                  {{ savingProfile ? 'Saving' : 'Save' }}
+                  {{ savingProfile ? '保存中' : '保存' }}
                 </button>
               </div>
             </template>
             <template v-else>
               <strong>{{ activeGroup.groupName }}</strong>
-              <p>{{ activeGroup.description || 'No description yet' }}</p>
-              <p>Invite code: {{ activeGroup.inviteCode || '-' }}</p>
-              <p>Chat: {{ activeGroup.chatEnabled === 1 ? 'Enabled' : 'Closed' }} | Recall: {{ activeGroup.recallLimitMinutes }} min</p>
+              <p>{{ activeGroup.description || '暂无描述' }}</p>
+              <p>邀请码： {{ activeGroup.inviteCode || '-' }}</p>
+              <p>发言： {{ activeGroup.chatEnabled === 1 ? '开启' : '关闭' }} | 撤回： {{ activeGroup.recallLimitMinutes }} min</p>
               <div class="panel-actions split-actions">
-                <button v-if="canManageGroup" class="secondary-btn compact" @click="startEditGroupProfile">Edit</button>
-                <button v-if="!isOwner" class="secondary-btn compact danger-action" @click="leaveActiveGroup">Leave</button>
-                <button v-else class="secondary-btn compact danger-action" @click="dissolveActiveGroup">Dissolve</button>
+                <button v-if="canManageGroup" class="secondary-btn compact" @click="startEditGroupProfile">编辑</button>
+                <button v-if="!isOwner" class="secondary-btn compact danger-action" @click="leaveActiveGroup">退出群聊</button>
+                <button v-else class="secondary-btn compact danger-action" @click="dissolveActiveGroup">解散群聊</button>
               </div>
             </template>
           </section>
 
           <section class="announcement-box">
-            <h3>Announcement</h3>
-            <div v-if="activeGroup.noticeUnread" class="notice-unread">Unread announcement</div>
-            <p v-if="!editingNotice">{{ activeGroup.notice || 'No announcement yet' }}</p>
+            <h3>群公告</h3>
+            <div v-if="activeGroup.noticeUnread" class="notice-unread">未读公告</div>
+            <p v-if="!editingNotice">{{ activeGroup.notice || '暂无公告' }}</p>
             <textarea v-else v-model="noticeDraft" rows="4" maxlength="1000"></textarea>
-            <small v-if="noticeReadStats">{{ noticeReadStats.readCount }}/{{ noticeReadStats.memberCount }} read</small>
+            <small v-if="noticeReadStats">{{ noticeReadStats.readCount }}/{{ noticeReadStats.memberCount }} 已读</small>
             <div class="panel-actions">
               <button class="secondary-btn compact" :disabled="savingNotice" @click="markNoticeRead">
                 Mark read
               </button>
-              <button v-if="!editingNotice && canManageGroup" class="secondary-btn compact" @click="startEditNotice">Edit</button>
+              <button v-if="!editingNotice && canManageGroup" class="secondary-btn compact" @click="startEditNotice">编辑</button>
               <button v-else class="primary-btn compact" :disabled="savingNotice" @click="saveNotice">
-                {{ savingNotice ? 'Saving' : 'Save' }}
+                {{ savingNotice ? '保存中' : '保存' }}
               </button>
             </div>
           </section>
 
           <section class="invite-box">
-            <h3>Files</h3>
+            <h3>文件</h3>
             <button class="secondary-btn compact" :disabled="loadingFiles" @click="loadFiles">
-              {{ loadingFiles ? 'Loading' : 'Load files' }}
+              {{ loadingFiles ? '加载中' : '加载文件' }}
             </button>
             <div v-if="groupFiles.length" class="file-list">
               <a v-for="file in groupFiles" :key="file.messageId" :href="file.content" target="_blank" rel="noreferrer">
@@ -201,11 +201,11 @@
           </section>
 
           <section class="invite-box" v-if="canManageGroup">
-            <h3>Invite</h3>
+            <h3>邀请成员</h3>
             <div class="member-picker">
-              <input v-model="inviteKeyword" placeholder="Search users" @keyup.enter.prevent="handleInviteSearch" />
+              <input v-model="inviteKeyword" placeholder="搜索用户" @keyup.enter.prevent="handleInviteSearch" />
               <button type="button" class="secondary-btn compact" :disabled="searchingInvites" @click="handleInviteSearch">
-                {{ searchingInvites ? '...' : 'Search' }}
+                {{ searchingInvites ? '...' : '搜索' }}
               </button>
             </div>
             <div v-if="inviteResults.length" class="user-results compact-results">
@@ -220,9 +220,9 @@
           </section>
 
           <section class="invite-box" v-if="canManageGroup">
-            <h3>Join requests</h3>
+            <h3>入群申请</h3>
             <button class="secondary-btn compact" :disabled="loadingJoinRequests" @click="loadJoinRequests">
-              {{ loadingJoinRequests ? 'Loading' : 'Load requests' }}
+              {{ loadingJoinRequests ? '加载中' : '加载申请' }}
             </button>
             <div v-if="joinRequests.length" class="member-list">
               <div v-for="request in joinRequests" :key="request.requestId" class="member-row">
@@ -232,20 +232,20 @@
                 </span>
                 <span>
                   <strong>{{ request.requesterNickname || request.requesterEmail }}</strong>
-                  <small>{{ request.message || 'No message' }}</small>
+                  <small>{{ request.message || '无附言' }}</small>
                 </span>
                 <span class="member-actions">
-                  <button type="button" @click="reviewJoin(request, true)">Approve</button>
-                  <button class="danger" type="button" @click="reviewJoin(request, false)">Reject</button>
+                  <button type="button" @click="reviewJoin(request, true)">同意</button>
+                  <button class="danger" type="button" @click="reviewJoin(request, false)">拒绝</button>
                 </span>
               </div>
             </div>
           </section>
 
           <section class="invite-box">
-            <h3>Notifications</h3>
+            <h3>通知</h3>
             <button class="secondary-btn compact" :disabled="loadingNotifications" @click="loadNotifications">
-              {{ loadingNotifications ? 'Loading' : 'Load notices' }}
+              {{ loadingNotifications ? '加载中' : '加载通知' }}
             </button>
             <div v-if="notifications.length" class="notification-list">
               <p v-for="item in notifications" :key="item.notificationId">
@@ -255,7 +255,7 @@
             </div>
           </section>
 
-          <h3>Members</h3>
+          <h3>成员</h3>
           <div class="member-list">
             <div v-for="member in members" :key="member.userId" class="member-row">
               <span class="avatar">
@@ -268,7 +268,7 @@
                     v-model="nicknameDraft"
                     class="nickname-input"
                     maxlength="64"
-                    placeholder="Group nickname"
+                    placeholder="群昵称"
                     @keyup.enter="saveMyNickname"
                   />
                 </template>
@@ -276,23 +276,23 @@
                 <small>{{ memberStatus(member) }}</small>
               </span>
               <span v-if="member.userId === currentUserId" class="member-actions">
-                <button v-if="!editingNickname" type="button" @click="startEditNickname(member)">Nickname</button>
+                <button v-if="!editingNickname" type="button" @click="startEditNickname(member)">群昵称</button>
                 <template v-else>
                   <button type="button" :disabled="savingNickname" @click="saveMyNickname">
-                    {{ savingNickname ? 'Saving' : 'Save' }}
+                    {{ savingNickname ? '保存中' : '保存' }}
                   </button>
-                  <button type="button" :disabled="savingNickname" @click="cancelEditNickname">Cancel</button>
+                  <button type="button" :disabled="savingNickname" @click="cancelEditNickname">取消</button>
                 </template>
               </span>
               <span v-if="canManageMember(member)" class="member-actions">
                 <button v-if="canToggleAdmin(member)" type="button" @click="toggleAdmin(member)">
-                  {{ member.role === 2 ? 'Unset admin' : 'Set admin' }}
+                  {{ member.role === 2 ? '取消管理员' : '设为管理员' }}
                 </button>
                 <button type="button" @click="toggleMute(member)">
-                  {{ isMuted(member) ? 'Unmute' : 'Mute' }}
+                  {{ isMuted(member) ? '解除禁言' : '禁言' }}
                 </button>
-                <button v-if="canTransferOwner(member)" type="button" @click="transferOwnerTo(member)">Transfer</button>
-                <button class="danger" type="button" @click="removeMemberFromGroup(member)">Remove</button>
+                <button v-if="canTransferOwner(member)" type="button" @click="transferOwnerTo(member)">转让</button>
+                <button class="danger" type="button" @click="removeMemberFromGroup(member)">移除</button>
               </span>
             </div>
           </div>
@@ -303,18 +303,18 @@
             <input
               v-model="messageKeyword"
               type="search"
-              placeholder="Search messages in this group"
+              placeholder="搜索群消息"
               @keyup.enter="handleMessageSearch"
             />
             <button class="secondary-btn compact" :disabled="searchingMessages" @click="handleMessageSearch">
-              {{ searchingMessages ? '...' : 'Search' }}
+              {{ searchingMessages ? '...' : '搜索' }}
             </button>
-            <button v-if="messageKeyword" class="secondary-btn compact" @click="clearMessageSearch">Clear</button>
+            <button v-if="messageKeyword" class="secondary-btn compact" @click="clearMessageSearch">清空</button>
           </div>
           <div ref="messageListRef" class="message-list">
-            <div v-if="loadingMessages" class="message-state">Loading messages...</div>
+            <div v-if="loadingMessages" class="message-state">消息加载中...</div>
             <div v-else-if="!orderedMessages.length" class="message-state">
-              {{ messageKeyword ? 'No matching messages' : 'Send the first group message' }}
+              {{ messageKeyword ? '没有匹配的消息' : '发送第一条群消息' }}
             </div>
             <button
               v-if="!loadingMessages && hasMoreMessages"
@@ -322,7 +322,7 @@
               :disabled="loadingEarlierMessages"
               @click="loadEarlierMessages"
             >
-              {{ loadingEarlierMessages ? 'Loading...' : 'Load earlier messages' }}
+              {{ loadingEarlierMessages ? '加载中...' : '加载更早消息' }}
             </button>
             <article
               v-for="message in orderedMessages"
@@ -330,7 +330,7 @@
               class="message-bubble"
               :class="{ mine: message.senderId === currentUserId }"
             >
-              <p v-if="message.recallStatus === 1" class="recalled">Message recalled</p>
+              <p v-if="message.recallStatus === 1" class="recalled">消息已撤回</p>
               <template v-else>
                 <strong v-if="message.senderId !== currentUserId" class="sender-name">{{ message.senderNickname }}</strong>
                 <div v-if="message.replyPreview" class="reply-preview">{{ message.replyPreview }}</div>
@@ -341,7 +341,7 @@
                 </template>
                 <template v-else-if="message.messageType === 'file'">
                   <a class="file-card" :href="message.content" target="_blank" rel="noreferrer">
-                    <span class="file-icon">FILE</span>
+                    <span class="file-icon">文件</span>
                     <span class="file-info">
                       <strong>{{ message.fileName || fileNameFromUrl(message.content) }}</strong>
                       <small>{{ fileMeta(message) }}</small>
@@ -354,7 +354,7 @@
                 <span v-if="message.mentionAll" class="mention-tag">@All</span>
                 <span v-if="message.mentionUserIds.length" class="mention-tag">@{{ message.mentionUserIds.length }}</span>
                 {{ formatTime(message.sentAt) }}
-                <button @click="replyTo(message)">Reply</button>
+                <button @click="replyTo(message)">回复</button>
                 <button
                   v-if="message.senderId === currentUserId && message.recallStatus === 0"
                   @click="handleRecall(message.messageId)"
@@ -368,14 +368,14 @@
 
           <form class="composer" @submit.prevent="handleSend">
             <div v-if="replyTarget" class="reply-compose">
-              Replying: {{ replyTarget.content || replyTarget.fileName || replyTarget.messageType }}
+              正在回复： {{ replyTarget.content || replyTarget.fileName || replyTarget.messageType }}
               <button type="button" @click="replyTarget = null">x</button>
             </div>
             <textarea
               v-model="draft"
               maxlength="1000"
               rows="1"
-              placeholder="Type a group message"
+              placeholder="输入群消息"
               @keydown.enter.exact.prevent="handleSend"
             ></textarea>
             <input ref="imageInput" class="hidden-file-input" type="file" accept="image/*" @change="handleImageSelect" />
@@ -389,11 +389,11 @@
             >
               @All
             </button>
-            <button type="button" class="secondary-btn compact" :disabled="sending" @click="chooseMentions">@Member</button>
-            <button type="button" class="secondary-btn compact" :disabled="sending" @click="imageInput?.click()">Image</button>
-            <button type="button" class="secondary-btn compact" :disabled="sending" @click="fileInput?.click()">File</button>
+            <button type="button" class="secondary-btn compact" :disabled="sending" @click="chooseMentions">@成员</button>
+            <button type="button" class="secondary-btn compact" :disabled="sending" @click="imageInput?.click()">图片</button>
+            <button type="button" class="secondary-btn compact" :disabled="sending" @click="fileInput?.click()">文件</button>
             <button class="primary-btn compact" :disabled="sending || !draft.trim()">
-              {{ sending ? 'Sending' : 'Send' }}
+              {{ sending ? '发送中' : '发送' }}
             </button>
           </form>
         </section>
@@ -682,7 +682,7 @@ async function handleMessageSearch() {
     hasMoreMessages.value = false
     await scrollMessagesToBottom()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Message search failed'
+    notice.value = error instanceof Error ? error.message : '搜索消息失败'
   } finally {
     searchingMessages.value = false
   }
@@ -755,7 +755,7 @@ async function requestJoin(group: GroupSummary) {
     await loadMyJoinRequests()
     notice.value = 'Join request sent'
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Join request failed'
+    notice.value = error instanceof Error ? error.message : '入群申请失败'
   }
 }
 
@@ -1006,7 +1006,7 @@ async function handleRecall(messageId: number) {
       await loadMessages()
     }
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Recall failed'
+    notice.value = error instanceof Error ? error.message : '撤回失败'
   }
 }
 
@@ -1021,7 +1021,7 @@ async function handleDelete(messageId: number) {
       await loadMessages()
     }
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Delete failed'
+    notice.value = error instanceof Error ? error.message : '删除失败'
   }
 }
 
@@ -1038,7 +1038,7 @@ async function saveNotice() {
     editingNotice.value = false
     await Promise.all([loadGroups(), loadNoticeReadStats()])
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Save announcement failed'
+    notice.value = error instanceof Error ? error.message : '保存公告失败'
   } finally {
     savingNotice.value = false
   }
@@ -1053,7 +1053,7 @@ async function markNoticeRead() {
       group.groupId === activeGroup.value?.groupId ? { ...group, noticeUnread: false } : group,
     )
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Mark announcement failed'
+    notice.value = error instanceof Error ? error.message : '标记公告失败'
   }
 }
 
@@ -1083,7 +1083,7 @@ async function handleGroupAvatarSelect(event: Event) {
     profileAvatarDraft.value = result.fileUrl
     profileAvatarPreview.value = result.fileUrl
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Group avatar upload failed'
+    notice.value = error instanceof Error ? error.message : '群头像上传失败'
   } finally {
     savingProfile.value = false
   }
@@ -1104,7 +1104,7 @@ async function saveGroupProfile() {
     profileAvatarPreview.value = ''
     await loadGroups()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Save group profile failed'
+    notice.value = error instanceof Error ? error.message : '保存群资料失败'
   } finally {
     savingProfile.value = false
   }
@@ -1118,7 +1118,7 @@ async function leaveActiveGroup() {
     resetActiveGroup()
     await loadGroups()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Leave group failed'
+    notice.value = error instanceof Error ? error.message : '退出群聊失败'
   }
 }
 
@@ -1130,7 +1130,7 @@ async function dissolveActiveGroup() {
     resetActiveGroup()
     await loadGroups()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Dissolve group failed'
+    notice.value = error instanceof Error ? error.message : '解散群聊失败'
   }
 }
 
@@ -1141,7 +1141,7 @@ async function transferOwnerTo(member: GroupMember) {
     members.value = await transferGroupOwner(activeGroup.value.groupId, member.userId)
     await loadGroups()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Transfer owner failed'
+    notice.value = error instanceof Error ? error.message : '转让群主失败'
   }
 }
 
@@ -1163,7 +1163,7 @@ async function saveMyNickname() {
     editingNickname.value = false
     nicknameDraft.value = ''
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Save nickname failed'
+    notice.value = error instanceof Error ? error.message : '保存群昵称失败'
   } finally {
     savingNickname.value = false
   }
@@ -1190,7 +1190,7 @@ async function toggleAdmin(member: GroupMember) {
       ? await unsetGroupAdmin(activeGroup.value.groupId, member.userId)
       : await setGroupAdmin(activeGroup.value.groupId, member.userId)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Admin operation failed'
+    notice.value = error instanceof Error ? error.message : '管理员操作失败'
   }
 }
 
@@ -1222,7 +1222,7 @@ async function toggleMute(member: GroupMember) {
     }
     members.value = await muteGroupMember(activeGroup.value.groupId, member.userId, minutes)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Mute operation failed'
+    notice.value = error instanceof Error ? error.message : '禁言操作失败'
   }
 }
 
@@ -1233,14 +1233,14 @@ async function removeMemberFromGroup(member: GroupMember) {
     await removeGroupMember(activeGroup.value.groupId, member.userId)
     await Promise.all([loadMembers(), loadGroups()])
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Remove member failed'
+    notice.value = error instanceof Error ? error.message : '移除成员失败'
   }
 }
 
 function roleLabel(role: number) {
-  if (role === 3) return 'Owner'
-  if (role === 2) return 'Admin'
-  return 'Member'
+  if (role === 3) return '群主'
+  if (role === 2) return '管理员'
+  return '成员'
 }
 
 function memberName(userId: number) {
@@ -1249,9 +1249,9 @@ function memberName(userId: number) {
 }
 
 function joinRequestStatus(status: number) {
-  if (status === 1) return 'Approved'
-  if (status === 2) return 'Rejected'
-  return 'Pending'
+  if (status === 1) return '已同意'
+  if (status === 2) return '已拒绝'
+  return '待处理'
 }
 
 function initials(value: string) {
@@ -1266,9 +1266,9 @@ function fileNameFromUrl(url: string) {
   try {
     const pathname = new URL(url).pathname
     const name = pathname.split('/').pop()
-    return name ? decodeURIComponent(name) : 'Attachment'
+    return name ? decodeURIComponent(name) : '附件'
   } catch {
-    return url.split('/').pop() || 'Attachment'
+    return url.split('/').pop() || '附件'
   }
 }
 
@@ -1276,7 +1276,7 @@ function fileMeta(message: GroupMessage) {
   const parts = []
   if (message.fileMimeType) parts.push(message.fileMimeType)
   if (message.fileSize != null) parts.push(formatFileSize(message.fileSize))
-  return parts.length ? parts.join(' | ') : 'Open attachment'
+  return parts.length ? parts.join(' | ') : '打开附件'
 }
 
 function formatFileSize(size: number) {
@@ -1317,11 +1317,12 @@ function resetActiveGroup() {
 .group-workspace {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
-  max-width: 1220px;
+  min-height: 100%;
+  height: 100%;
+  width: 100%;
   background: #fff;
   border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 18px 48px rgba(17, 34, 68, 0.08);
 }
@@ -1755,7 +1756,7 @@ function resetActiveGroup() {
   align-self: flex-start;
   max-width: min(560px, 86%);
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 16px;
   background: #eef2f7;
 }
 
@@ -1961,7 +1962,7 @@ function resetActiveGroup() {
 .image-lightbox img {
   max-width: min(960px, 96vw);
   max-height: 90vh;
-  border-radius: 8px;
+  border-radius: 16px;
 }
 
 @media (max-width: 980px) {
@@ -2000,3 +2001,8 @@ function resetActiveGroup() {
   }
 }
 </style>
+
+
+
+
+
