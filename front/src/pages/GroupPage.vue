@@ -4,75 +4,17 @@
       <header class="group-header">
         <div>
           <h2>群聊</h2>
-          <p>群组会话</p>
+          <p>我已加入的群组会话</p>
         </div>
-        <button class="icon-button" :disabled="loadingGroups" @click="loadGroups">刷新</button>
+        <div class="group-header-actions">
+          <button class="icon-button" :disabled="loadingGroups" title="刷新" @click="loadGroups">
+            <SvgIcon name="refresh" />
+          </button>
+          <button class="icon-button" title="群组工具" @click="openGroupTools(groupToolMode)">
+            <SvgIcon name="menu" />
+          </button>
+        </div>
       </header>
-
-      <form class="create-group" @submit.prevent="handleCreateGroup">
-        <input v-model="newGroupName" maxlength="30" placeholder="群名称" />
-        <textarea v-model="newGroupDescription" rows="2" placeholder="群描述"></textarea>
-        <div class="member-picker">
-          <input v-model="userKeyword" placeholder="搜索要添加的用户" @keyup.enter.prevent="handleUserSearch" />
-          <button type="button" class="secondary-btn compact" :disabled="searchingUsers" @click="handleUserSearch">
-            {{ searchingUsers ? '...' : '搜索' }}
-          </button>
-        </div>
-        <div v-if="userResults.length" class="user-results">
-          <button v-for="user in userResults" :key="user.userId" type="button" @click="toggleMember(user)">
-            <span class="avatar">{{ initials(user.nickname || user.email) }}</span>
-            <span>
-              <strong>{{ user.nickname || user.email }}</strong>
-              <small>{{ selectedMemberIds.includes(user.userId) ? '已选择' : user.email }}</small>
-            </span>
-          </button>
-        </div>
-        <div v-if="selectedMembers.length" class="selected-members">
-          <span v-for="member in selectedMembers" :key="member.userId">
-            {{ member.nickname || member.email }}
-            <button type="button" @click="removeMember(member.userId)">x</button>
-          </span>
-        </div>
-        <button class="primary-btn compact" :disabled="creatingGroup || !canCreateGroup">
-          {{ creatingGroup ? '创建中' : '创建群聊' }}
-        </button>
-      </form>
-
-      <section class="discover-group">
-        <div class="member-picker">
-          <input v-model="groupKeyword" placeholder="搜索群组" @keyup.enter.prevent="handleGroupSearch" />
-          <button type="button" class="secondary-btn compact" :disabled="searchingGroups" @click="handleGroupSearch">
-            {{ searchingGroups ? '...' : '搜索' }}
-          </button>
-        </div>
-        <div class="member-picker">
-          <input v-model="inviteCodeDraft" placeholder="邀请码" @keyup.enter.prevent="joinByInvite" />
-          <button type="button" class="secondary-btn compact" @click="joinByInvite">加入</button>
-        </div>
-        <div v-if="groupResults.length" class="user-results compact-results">
-          <button v-for="group in groupResults" :key="group.groupId" type="button" @click="requestJoin(group)">
-            <span class="avatar">
-              <img v-if="group.avatarUrl" :src="group.avatarUrl" alt="" />
-              <span v-else>{{ initials(group.groupName) }}</span>
-            </span>
-            <span>
-              <strong>{{ group.groupName }}</strong>
-              <small>{{ group.memberCount }} 名成员 | 申请加入</small>
-            </span>
-          </button>
-        </div>
-        <div class="panel-actions">
-          <button type="button" class="secondary-btn compact" :disabled="loadingMyJoinRequests" @click="loadMyJoinRequests">
-            {{ loadingMyJoinRequests ? '加载中' : '我的申请' }}
-          </button>
-        </div>
-        <div v-if="myJoinRequests.length" class="request-status-list">
-          <p v-for="request in myJoinRequests" :key="request.requestId">
-            <strong>Group #{{ request.groupId }}</strong>
-            <small>{{ joinRequestStatus(request.status) }}</small>
-          </p>
-        </div>
-      </section>
 
       <div class="group-list">
         <button
@@ -82,10 +24,7 @@
           :class="{ active: activeGroup?.groupId === group.groupId }"
           @click="selectGroup(group)"
         >
-          <span class="avatar">
-            <img v-if="group.avatarUrl" :src="group.avatarUrl" alt="" />
-            <span v-else>{{ initials(group.groupName) }}</span>
-          </span>
+          <AvatarFrame :src="group.avatarUrl" :name="group.groupName" size="sm" />
           <span>
             <strong>{{ group.groupName }}</strong>
             <small>{{ group.memberCount }} 名成员</small>
@@ -95,14 +34,144 @@
         </button>
         <div v-if="!loadingGroups && !groups.length" class="empty-list">暂无群聊</div>
       </div>
+
+      <div v-if="showGroupTools" class="group-tool-overlay" @click.self="showGroupTools = false">
+        <aside class="group-tool-drawer">
+          <header class="group-tool-head">
+            <div>
+              <h3>群组工具</h3>
+              <p>加入群聊、查看申请和审核信息</p>
+            </div>
+            <button class="secondary-btn compact icon-only-btn" type="button" title="关闭" @click="showGroupTools = false">
+              <SvgIcon name="close" />
+            </button>
+          </header>
+
+          <div class="group-tool-switch" aria-label="群组工具">
+            <button type="button" :class="{ active: groupToolMode === 'join' }" aria-label="加入群聊" @click="openGroupTools('join')">
+              <SvgIcon name="group" />
+              <span class="tool-tip">加入群聊</span>
+            </button>
+            <button type="button" :class="{ active: groupToolMode === 'mine' }" aria-label="我的申请" @click="openGroupTools('mine')">
+              <SvgIcon name="inbox" />
+              <span class="tool-tip">我的申请</span>
+            </button>
+            <button type="button" :class="{ active: groupToolMode === 'audit' }" aria-label="审核信息" @click="openGroupTools('audit')">
+              <SvgIcon name="check" />
+              <span class="tool-tip">审核信息</span>
+            </button>
+          </div>
+
+          <section v-if="groupToolMode === 'join'" class="tool-card">
+            <h4>加入或创建群聊</h4>
+            <div class="member-picker">
+              <input v-model="groupKeyword" placeholder="搜索群组" @keyup.enter.prevent="handleGroupSearch" />
+              <button type="button" class="secondary-btn compact" :disabled="searchingGroups" @click="handleGroupSearch">
+                {{ searchingGroups ? '...' : '搜索' }}
+              </button>
+            </div>
+            <div class="member-picker">
+              <input v-model="inviteCodeDraft" placeholder="邀请码" @keyup.enter.prevent="joinByInvite" />
+              <button type="button" class="secondary-btn compact" @click="joinByInvite">加入</button>
+            </div>
+            <div v-if="groupResults.length" class="user-results compact-results">
+              <button v-for="group in groupResults" :key="group.groupId" type="button" @click="requestJoin(group)">
+                <AvatarFrame :src="group.avatarUrl" :name="group.groupName" size="sm" />
+                <span>
+                  <strong>{{ group.groupName }}</strong>
+                  <small>{{ group.memberCount }} 名成员 | 申请加入</small>
+                </span>
+              </button>
+            </div>
+
+            <form class="create-group tool-stack" @submit.prevent="handleCreateGroup">
+              <h4>创建群聊</h4>
+              <input v-model="newGroupName" maxlength="30" placeholder="群名称" />
+              <textarea v-model="newGroupDescription" rows="2" placeholder="群描述"></textarea>
+              <div class="member-picker">
+                <input v-model="userKeyword" placeholder="搜索要添加的用户" @keyup.enter.prevent="handleUserSearch" />
+                <button type="button" class="secondary-btn compact" :disabled="searchingUsers" @click="handleUserSearch">
+                  {{ searchingUsers ? '...' : '搜索' }}
+                </button>
+              </div>
+              <div v-if="userResults.length" class="user-results compact-results">
+                <button v-for="user in userResults" :key="user.userId" type="button" @click="toggleMember(user)">
+                  <AvatarFrame :name="user.nickname || user.email" size="sm" />
+                  <span>
+                    <strong>{{ user.nickname || user.email }}</strong>
+                    <small>{{ selectedMemberIds.includes(user.userId) ? '已选择' : user.email }}</small>
+                  </span>
+                </button>
+              </div>
+              <div v-if="selectedMembers.length" class="selected-members">
+                <span v-for="member in selectedMembers" :key="member.userId">
+                  {{ member.nickname || member.email }}
+                  <button type="button" @click="removeMember(member.userId)">x</button>
+                </span>
+              </div>
+              <button class="primary-btn compact" :disabled="creatingGroup || !canCreateGroup">
+                {{ creatingGroup ? '创建中' : '创建群聊' }}
+              </button>
+            </form>
+          </section>
+
+          <section v-else-if="groupToolMode === 'mine'" class="tool-card">
+            <h4>我的申请</h4>
+            <button type="button" class="secondary-btn compact" :disabled="loadingMyJoinRequests" @click="loadMyJoinRequests">
+              {{ loadingMyJoinRequests ? '加载中' : '刷新申请' }}
+            </button>
+            <div v-if="myJoinRequests.length" class="request-status-list">
+              <p v-for="request in myJoinRequests" :key="request.requestId">
+                <strong>群聊 #{{ request.groupId }}</strong>
+                <small>{{ joinRequestStatus(request.status) }}</small>
+              </p>
+            </div>
+            <div v-else class="empty-inline">暂无申请记录</div>
+          </section>
+
+          <section v-else class="tool-card">
+            <h4>审核信息</h4>
+            <template v-if="activeGroup && canManageGroup">
+              <button class="secondary-btn compact" :disabled="loadingJoinRequests" @click="loadJoinRequests">
+                {{ loadingJoinRequests ? '加载中' : '加载审核' }}
+              </button>
+              <div v-if="joinRequests.length" class="member-list">
+                <div v-for="request in joinRequests" :key="request.requestId" class="member-row">
+                  <AvatarFrame :src="request.requesterAvatarUrl" :name="request.requesterNickname || request.requesterEmail" size="sm" />
+                  <span>
+                    <strong>{{ request.requesterNickname || request.requesterEmail }}</strong>
+                    <small>{{ request.message || '无附言' }}</small>
+                  </span>
+                  <span class="member-actions">
+                    <button type="button" @click="reviewJoin(request, true)">同意</button>
+                    <button class="danger" type="button" @click="reviewJoin(request, false)">拒绝</button>
+                  </span>
+                </div>
+              </div>
+              <div v-else class="empty-inline">当前群暂无待审核申请</div>
+            </template>
+            <template v-else>
+              <button class="secondary-btn compact" :disabled="loadingNotifications" @click="loadNotifications">
+                {{ loadingNotifications ? '加载中' : '加载通知' }}
+              </button>
+              <div v-if="notifications.length" class="notification-list">
+                <p v-for="item in notifications" :key="item.notificationId">
+                  <strong>{{ item.content }}</strong>
+                  <small>{{ formatTime(item.createdAt) }}</small>
+                </p>
+              </div>
+              <div v-else class="empty-inline">
+                {{ activeGroup ? '当前没有审核通知' : '先选择一个群聊，再查看审核信息' }}
+              </div>
+            </template>
+          </section>
+        </aside>
+      </div>
     </aside>
 
     <main class="group-panel">
       <header v-if="activeGroup" class="chat-header">
-        <span class="avatar">
-          <img v-if="activeGroup.avatarUrl" :src="activeGroup.avatarUrl" alt="" />
-          <span v-else>{{ initials(activeGroup.groupName) }}</span>
-        </span>
+        <AvatarFrame :src="activeGroup.avatarUrl" :name="activeGroup.groupName" size="md" />
         <div>
           <h2>{{ activeGroup.groupName }}</h2>
           <p>{{ activeGroup.memberCount }} 名成员</p>
@@ -119,183 +188,168 @@
       <div v-else class="group-chat">
         <aside class="member-panel">
           <section class="profile-box">
-            <h3>群资料</h3>
-            <div class="profile-avatar-row">
-              <span class="avatar large-avatar">
-                <img v-if="profileAvatarPreview || activeGroup.avatarUrl" :src="profileAvatarPreview || activeGroup.avatarUrl || ''" alt="" />
-                <span v-else>{{ initials(activeGroup.groupName) }}</span>
-              </span>
-              <button
-                v-if="editingProfile"
-                type="button"
-                class="secondary-btn compact"
-                :disabled="savingProfile"
-                @click="groupAvatarInput?.click()"
-              >
-                Avatar
-              </button>
-              <input
-                ref="groupAvatarInput"
-                class="hidden-file-input"
-                type="file"
-                accept="image/*"
-                @change="handleGroupAvatarSelect"
-              />
-            </div>
-            <template v-if="editingProfile">
-              <input v-model="profileNameDraft" maxlength="30" placeholder="群名称" />
-              <textarea v-model="profileDescriptionDraft" rows="3" maxlength="255" placeholder="群描述"></textarea>
-              <label class="inline-setting">
-                <input v-model="profileChatEnabledDraft" type="checkbox" />
-                允许发言
-              </label>
-              <input v-model.number="profileRecallLimitDraft" type="number" min="0" max="1440" placeholder="撤回分钟数" />
-              <div class="panel-actions split-actions">
-                <button class="secondary-btn compact" :disabled="savingProfile" @click="cancelEditGroupProfile">取消</button>
-                <button class="primary-btn compact" :disabled="savingProfile || !profileNameDraft.trim()" @click="saveGroupProfile">
-                  {{ savingProfile ? '保存中' : '保存' }}
+            <button class="section-toggle" type="button" @click="togglePanel('profile')">
+              <span>群资料</span>
+              <SvgIcon name="chevron" :class="{ open: openPanels.profile }" />
+            </button>
+            <div v-if="openPanels.profile" class="section-body">
+              <div class="profile-avatar-row">
+                <AvatarFrame :src="profileAvatarPreview || activeGroup.avatarUrl" :name="activeGroup.groupName" size="lg" />
+                <button
+                  v-if="editingProfile"
+                  type="button"
+                  class="secondary-btn compact"
+                  :disabled="savingProfile"
+                  @click="groupAvatarInput?.click()"
+                >
+                  更换头像
                 </button>
+                <input
+                  ref="groupAvatarInput"
+                  class="hidden-file-input"
+                  type="file"
+                  accept="image/*"
+                  @change="handleGroupAvatarSelect"
+                />
               </div>
-            </template>
-            <template v-else>
-              <strong>{{ activeGroup.groupName }}</strong>
-              <p>{{ activeGroup.description || '暂无描述' }}</p>
-              <p>邀请码： {{ activeGroup.inviteCode || '-' }}</p>
-              <p>发言： {{ activeGroup.chatEnabled === 1 ? '开启' : '关闭' }} | 撤回： {{ activeGroup.recallLimitMinutes }} min</p>
-              <div class="panel-actions split-actions">
-                <button v-if="canManageGroup" class="secondary-btn compact" @click="startEditGroupProfile">编辑</button>
-                <button v-if="!isOwner" class="secondary-btn compact danger-action" @click="leaveActiveGroup">退出群聊</button>
-                <button v-else class="secondary-btn compact danger-action" @click="dissolveActiveGroup">解散群聊</button>
-              </div>
-            </template>
+              <template v-if="editingProfile">
+                <input v-model="profileNameDraft" maxlength="30" placeholder="群名称" />
+                <textarea v-model="profileDescriptionDraft" rows="3" maxlength="255" placeholder="群描述"></textarea>
+                <label class="inline-setting">
+                  <input v-model="profileChatEnabledDraft" type="checkbox" />
+                  允许发言
+                </label>
+                <input v-model.number="profileRecallLimitDraft" type="number" min="0" max="1440" placeholder="撤回分钟数" />
+                <div class="panel-actions split-actions">
+                  <button class="secondary-btn compact" :disabled="savingProfile" @click="cancelEditGroupProfile">取消</button>
+                  <button class="primary-btn compact" :disabled="savingProfile || !profileNameDraft.trim()" @click="saveGroupProfile">
+                    {{ savingProfile ? '保存中' : '保存' }}
+                  </button>
+                </div>
+              </template>
+              <template v-else>
+                <strong>{{ activeGroup.groupName }}</strong>
+                <p>{{ activeGroup.description || '暂无描述' }}</p>
+                <p>邀请码： {{ activeGroup.inviteCode || '-' }}</p>
+                <p>发言： {{ activeGroup.chatEnabled === 1 ? '开启' : '关闭' }} | 撤回： {{ activeGroup.recallLimitMinutes }} 分钟</p>
+                <div class="panel-actions split-actions">
+                  <button v-if="canManageGroup" class="secondary-btn compact" @click="startEditGroupProfile">编辑</button>
+                  <button v-if="!isOwner" class="secondary-btn compact danger-action" @click="leaveActiveGroup">退出群聊</button>
+                  <button v-else class="secondary-btn compact danger-action" @click="dissolveActiveGroup">解散群聊</button>
+                </div>
+              </template>
+            </div>
           </section>
 
           <section class="announcement-box">
-            <h3>群公告</h3>
-            <div v-if="activeGroup.noticeUnread" class="notice-unread">未读公告</div>
-            <p v-if="!editingNotice">{{ activeGroup.notice || '暂无公告' }}</p>
-            <textarea v-else v-model="noticeDraft" rows="4" maxlength="1000"></textarea>
-            <small v-if="noticeReadStats">{{ noticeReadStats.readCount }}/{{ noticeReadStats.memberCount }} 已读</small>
-            <div class="panel-actions">
-              <button class="secondary-btn compact" :disabled="savingNotice" @click="markNoticeRead">
-                Mark read
-              </button>
-              <button v-if="!editingNotice && canManageGroup" class="secondary-btn compact" @click="startEditNotice">编辑</button>
-              <button v-else class="primary-btn compact" :disabled="savingNotice" @click="saveNotice">
-                {{ savingNotice ? '保存中' : '保存' }}
-              </button>
-            </div>
-          </section>
-
-          <section class="invite-box">
-            <h3>文件</h3>
-            <button class="secondary-btn compact" :disabled="loadingFiles" @click="loadFiles">
-              {{ loadingFiles ? '加载中' : '加载文件' }}
+            <button class="section-toggle" type="button" @click="togglePanel('notice')">
+              <span>群公告</span>
+              <SvgIcon name="chevron" :class="{ open: openPanels.notice }" />
             </button>
-            <div v-if="groupFiles.length" class="file-list">
-              <a v-for="file in groupFiles" :key="file.messageId" :href="file.content" target="_blank" rel="noreferrer">
-                <strong>{{ file.fileName || fileNameFromUrl(file.content) }}</strong>
-                <small>{{ fileMeta(file) }}</small>
-              </a>
-            </div>
-          </section>
-
-          <section class="invite-box" v-if="canManageGroup">
-            <h3>邀请成员</h3>
-            <div class="member-picker">
-              <input v-model="inviteKeyword" placeholder="搜索用户" @keyup.enter.prevent="handleInviteSearch" />
-              <button type="button" class="secondary-btn compact" :disabled="searchingInvites" @click="handleInviteSearch">
-                {{ searchingInvites ? '...' : '搜索' }}
-              </button>
-            </div>
-            <div v-if="inviteResults.length" class="user-results compact-results">
-              <button v-for="user in inviteResults" :key="user.userId" type="button" @click="inviteUser(user.userId)">
-                <span class="avatar">{{ initials(user.nickname || user.email) }}</span>
-                <span>
-                  <strong>{{ user.nickname || user.email }}</strong>
-                  <small>{{ user.email }}</small>
-                </span>
-              </button>
-            </div>
-          </section>
-
-          <section class="invite-box" v-if="canManageGroup">
-            <h3>入群申请</h3>
-            <button class="secondary-btn compact" :disabled="loadingJoinRequests" @click="loadJoinRequests">
-              {{ loadingJoinRequests ? '加载中' : '加载申请' }}
-            </button>
-            <div v-if="joinRequests.length" class="member-list">
-              <div v-for="request in joinRequests" :key="request.requestId" class="member-row">
-                <span class="avatar">
-                  <img v-if="request.requesterAvatarUrl" :src="request.requesterAvatarUrl" alt="" />
-                  <span v-else>{{ initials(request.requesterNickname || request.requesterEmail) }}</span>
-                </span>
-                <span>
-                  <strong>{{ request.requesterNickname || request.requesterEmail }}</strong>
-                  <small>{{ request.message || '无附言' }}</small>
-                </span>
-                <span class="member-actions">
-                  <button type="button" @click="reviewJoin(request, true)">同意</button>
-                  <button class="danger" type="button" @click="reviewJoin(request, false)">拒绝</button>
-                </span>
+            <div v-if="openPanels.notice" class="section-body">
+              <div v-if="activeGroup.noticeUnread" class="notice-unread">未读公告</div>
+              <p v-if="!editingNotice">{{ activeGroup.notice || '暂无公告' }}</p>
+              <textarea v-else v-model="noticeDraft" rows="4" maxlength="1000"></textarea>
+              <small v-if="noticeReadStats">{{ noticeReadStats.readCount }}/{{ noticeReadStats.memberCount }} 已读</small>
+              <div class="panel-actions">
+                <button class="secondary-btn compact" :disabled="savingNotice" @click="markNoticeRead">
+                  标记已读
+                </button>
+                <button v-if="!editingNotice && canManageGroup" class="secondary-btn compact" @click="startEditNotice">编辑</button>
+                <button v-else class="primary-btn compact" :disabled="savingNotice" @click="saveNotice">
+                  {{ savingNotice ? '保存中' : '保存' }}
+                </button>
               </div>
             </div>
           </section>
 
           <section class="invite-box">
-            <h3>通知</h3>
-            <button class="secondary-btn compact" :disabled="loadingNotifications" @click="loadNotifications">
-              {{ loadingNotifications ? '加载中' : '加载通知' }}
+            <button class="section-toggle" type="button" @click="togglePanel('files')">
+              <span>文件</span>
+              <SvgIcon name="chevron" :class="{ open: openPanels.files }" />
             </button>
-            <div v-if="notifications.length" class="notification-list">
-              <p v-for="item in notifications" :key="item.notificationId">
-                <strong>{{ item.content }}</strong>
-                <small>{{ formatTime(item.createdAt) }}</small>
-              </p>
+            <div v-if="openPanels.files" class="section-body">
+              <button class="secondary-btn compact" :disabled="loadingFiles" @click="loadFiles">
+                {{ loadingFiles ? '加载中' : '加载文件' }}
+              </button>
+              <div v-if="groupFiles.length" class="file-list">
+                <a v-for="file in groupFiles" :key="file.messageId" :href="resolveAssetUrl(file.content)" target="_blank" rel="noreferrer">
+                  <strong>{{ file.fileName || fileNameFromUrl(file.content) }}</strong>
+                  <small>{{ fileMeta(file) }}</small>
+                </a>
+              </div>
             </div>
           </section>
 
-          <h3>成员</h3>
-          <div class="member-list">
-            <div v-for="member in members" :key="member.userId" class="member-row">
-              <span class="avatar">
-                <img v-if="member.avatarUrl" :src="member.avatarUrl" alt="" />
-                <span v-else>{{ initials(member.nickname || member.email) }}</span>
-              </span>
-              <span>
-                <template v-if="editingNickname && member.userId === currentUserId">
-                  <input
-                    v-model="nicknameDraft"
-                    class="nickname-input"
-                    maxlength="64"
-                    placeholder="群昵称"
-                    @keyup.enter="saveMyNickname"
-                  />
-                </template>
-                <strong v-else>{{ member.groupNickname || member.nickname || member.email }}</strong>
-                <small>{{ memberStatus(member) }}</small>
-              </span>
-              <span v-if="member.userId === currentUserId" class="member-actions">
-                <button v-if="!editingNickname" type="button" @click="startEditNickname(member)">群昵称</button>
-                <template v-else>
-                  <button type="button" :disabled="savingNickname" @click="saveMyNickname">
-                    {{ savingNickname ? '保存中' : '保存' }}
-                  </button>
-                  <button type="button" :disabled="savingNickname" @click="cancelEditNickname">取消</button>
-                </template>
-              </span>
-              <span v-if="canManageMember(member)" class="member-actions">
-                <button v-if="canToggleAdmin(member)" type="button" @click="toggleAdmin(member)">
-                  {{ member.role === 2 ? '取消管理员' : '设为管理员' }}
+          <section class="invite-box" v-if="canManageGroup">
+            <button class="section-toggle" type="button" @click="togglePanel('invite')">
+              <span>邀请成员</span>
+              <SvgIcon name="chevron" :class="{ open: openPanels.invite }" />
+            </button>
+            <div v-if="openPanels.invite" class="section-body">
+              <div class="member-picker">
+                <input v-model="inviteKeyword" placeholder="搜索用户" @keyup.enter.prevent="handleInviteSearch" />
+                <button type="button" class="secondary-btn compact" :disabled="searchingInvites" @click="handleInviteSearch">
+                  {{ searchingInvites ? '...' : '搜索' }}
                 </button>
-                <button type="button" @click="toggleMute(member)">
-                  {{ isMuted(member) ? '解除禁言' : '禁言' }}
+              </div>
+              <div v-if="inviteResults.length" class="user-results compact-results">
+                <button v-for="user in inviteResults" :key="user.userId" type="button" @click="inviteUser(user.userId)">
+                  <AvatarFrame :name="user.nickname || user.email" size="sm" />
+                  <span>
+                    <strong>{{ user.nickname || user.email }}</strong>
+                    <small>{{ user.email }}</small>
+                  </span>
                 </button>
-                <button v-if="canTransferOwner(member)" type="button" @click="transferOwnerTo(member)">转让</button>
-                <button class="danger" type="button" @click="removeMemberFromGroup(member)">移除</button>
-              </span>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section class="invite-box">
+            <button class="section-toggle" type="button" @click="togglePanel('members')">
+              <span>成员</span>
+              <SvgIcon name="chevron" :class="{ open: openPanels.members }" />
+            </button>
+            <div v-if="openPanels.members" class="section-body">
+              <div class="member-list">
+                <div v-for="member in members" :key="member.userId" class="member-row">
+                  <AvatarFrame :src="member.avatarUrl" :name="member.nickname || member.email" size="sm" />
+                  <span>
+                    <template v-if="editingNickname && member.userId === currentUserId">
+                      <input
+                        v-model="nicknameDraft"
+                        class="nickname-input"
+                        maxlength="64"
+                        placeholder="群昵称"
+                        @keyup.enter="saveMyNickname"
+                      />
+                    </template>
+                    <strong v-else>{{ member.groupNickname || member.nickname || member.email }}</strong>
+                    <small>{{ memberStatus(member) }}</small>
+                  </span>
+                  <span v-if="member.userId === currentUserId" class="member-actions">
+                    <button v-if="!editingNickname" type="button" @click="startEditNickname(member)">群昵称</button>
+                    <template v-else>
+                      <button type="button" :disabled="savingNickname" @click="saveMyNickname">
+                        {{ savingNickname ? '保存中' : '保存' }}
+                      </button>
+                      <button type="button" :disabled="savingNickname" @click="cancelEditNickname">取消</button>
+                    </template>
+                  </span>
+                  <span v-if="canManageMember(member)" class="member-actions">
+                    <button v-if="canToggleAdmin(member)" type="button" @click="toggleAdmin(member)">
+                      {{ member.role === 2 ? '取消管理员' : '设为管理员' }}
+                    </button>
+                    <button type="button" @click="toggleMute(member)">
+                      {{ isMuted(member) ? '解除禁言' : '禁言' }}
+                    </button>
+                    <button v-if="canTransferOwner(member)" type="button" @click="transferOwnerTo(member)">转让</button>
+                    <button class="danger" type="button" @click="removeMemberFromGroup(member)">移除</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
         </aside>
 
         <section class="message-column">
@@ -327,42 +381,46 @@
             <article
               v-for="message in orderedMessages"
               :key="message.messageId"
-              class="message-bubble"
+              class="message-row"
               :class="{ mine: message.senderId === currentUserId }"
+              @contextmenu.prevent="openGroupMessageMenu($event, message)"
             >
-              <p v-if="message.recallStatus === 1" class="recalled">消息已撤回</p>
-              <template v-else>
-                <strong v-if="message.senderId !== currentUserId" class="sender-name">{{ message.senderNickname }}</strong>
-                <div v-if="message.replyPreview" class="reply-preview">{{ message.replyPreview }}</div>
-                <template v-if="message.messageType === 'image'">
-                  <button class="image-preview-button" @click="previewImageUrl = message.content">
-                    <img class="message-image" :src="message.content" alt="group image" />
-                  </button>
-                </template>
-                <template v-else-if="message.messageType === 'file'">
-                  <a class="file-card" :href="message.content" target="_blank" rel="noreferrer">
-                    <span class="file-icon">文件</span>
-                    <span class="file-info">
-                      <strong>{{ message.fileName || fileNameFromUrl(message.content) }}</strong>
-                      <small>{{ fileMeta(message) }}</small>
-                    </span>
-                  </a>
-                </template>
-                <p v-else>{{ message.content }}</p>
-              </template>
-              <footer>
-                <span v-if="message.mentionAll" class="mention-tag">@All</span>
-                <span v-if="message.mentionUserIds.length" class="mention-tag">@{{ message.mentionUserIds.length }}</span>
-                {{ formatTime(message.sentAt) }}
-                <button @click="replyTo(message)">回复</button>
-                <button
-                  v-if="message.senderId === currentUserId && message.recallStatus === 0"
-                  @click="handleRecall(message.messageId)"
-                >
-                  Recall
-                </button>
-                <button @click="handleDelete(message.messageId)">Delete</button>
-              </footer>
+              <AvatarFrame
+                :src="message.senderId === currentUserId ? currentUserAvatarUrl : memberAvatar(message.senderId)"
+                :name="message.senderId === currentUserId ? currentUserDisplayName : message.senderNickname || memberName(message.senderId)"
+                size="sm"
+              />
+              <div class="message-stack">
+                <div v-if="message.senderId !== currentUserId" class="message-label">
+                  {{ message.senderNickname || memberName(message.senderId) }}
+                </div>
+                <div class="message-bubble">
+                  <p v-if="message.recallStatus === 1" class="recalled">消息已撤回</p>
+                  <template v-else>
+                    <div v-if="message.replyPreview" class="reply-preview">{{ message.replyPreview }}</div>
+                    <template v-if="message.messageType === 'image'">
+                      <button class="image-preview-button" @click="previewImageUrl = resolveAssetUrl(message.content)">
+                        <img class="message-image" :src="resolveAssetUrl(message.content)" alt="group image" />
+                      </button>
+                    </template>
+                    <template v-else-if="message.messageType === 'file'">
+                      <a class="file-card" :href="resolveAssetUrl(message.content)" target="_blank" rel="noreferrer">
+                        <span class="file-icon">文件</span>
+                        <span class="file-info">
+                          <strong>{{ message.fileName || fileNameFromUrl(message.content) }}</strong>
+                          <small>{{ fileMeta(message) }}</small>
+                        </span>
+                      </a>
+                    </template>
+                    <p v-else>{{ message.content }}</p>
+                  </template>
+                </div>
+                <footer class="message-meta">
+                  <span v-if="message.mentionAll" class="mention-tag">@All</span>
+                  <span v-if="message.mentionUserIds.length" class="mention-tag">@{{ message.mentionUserIds.length }}</span>
+                  {{ formatTime(message.sentAt) }}
+                </footer>
+              </div>
             </article>
           </div>
 
@@ -380,21 +438,51 @@
             ></textarea>
             <input ref="imageInput" class="hidden-file-input" type="file" accept="image/*" @change="handleImageSelect" />
             <input ref="fileInput" class="hidden-file-input" type="file" @change="handleFileSelect" />
-            <button
-              type="button"
-              class="secondary-btn compact"
-              :class="{ selected: mentionAllDraft }"
-              :disabled="sending || !canMentionAll"
-              @click="mentionAllDraft = !mentionAllDraft"
-            >
-              @All
-            </button>
-            <button type="button" class="secondary-btn compact" :disabled="sending" @click="chooseMentions">@成员</button>
-            <button type="button" class="secondary-btn compact" :disabled="sending" @click="imageInput?.click()">图片</button>
-            <button type="button" class="secondary-btn compact" :disabled="sending" @click="fileInput?.click()">文件</button>
-            <button class="primary-btn compact" :disabled="sending || !draft.trim()">
-              {{ sending ? '发送中' : '发送' }}
-            </button>
+            <div class="composer-toolbar">
+              <div class="composer-tools">
+                <div class="mention-menu-shell">
+                  <button
+                    type="button"
+                    class="secondary-btn compact icon-only-btn composer-icon"
+                    :class="{ selected: mentionAllDraft || mentionUserIdsDraft.length }"
+                    :disabled="sending"
+                    title="提及成员"
+                    @click="showMentionMenu = !showMentionMenu"
+                  >
+                    <SvgIcon name="at" />
+                  </button>
+                  <div v-if="showMentionMenu" class="mention-menu-popover">
+                    <button
+                      type="button"
+                      class="mention-menu-item"
+                      :class="{ active: mentionAllDraft }"
+                      :disabled="!canMentionAll"
+                      @click="mentionAllDraft = !mentionAllDraft"
+                    >
+                      <SvgIcon name="group" />
+                      <span>@All</span>
+                    </button>
+                    <button type="button" class="mention-menu-item" @click="chooseMentions(); showMentionMenu = false">
+                      <SvgIcon name="profile" />
+                      <span>@成员</span>
+                    </button>
+                  </div>
+                </div>
+                <button type="button" class="secondary-btn compact icon-only-btn composer-icon" :disabled="sending" title="发送图片" @click="imageInput?.click()">
+                  <SvgIcon name="image" />
+                </button>
+                <button type="button" class="secondary-btn compact icon-only-btn composer-icon" :disabled="sending" title="发送文件" @click="fileInput?.click()">
+                  <SvgIcon name="file" />
+                </button>
+              </div>
+              <span v-if="mentionAllDraft || mentionUserIdsDraft.length" class="composer-status">
+                {{ mentionAllDraft ? '@All 已启用' : `已提及 ${mentionUserIdsDraft.length} 人` }}
+              </span>
+              <button class="primary-btn compact send-btn" :disabled="sending || !draft.trim()">
+                <SvgIcon name="send" />
+                <span>{{ sending ? '发送中' : '发送' }}</span>
+              </button>
+            </div>
           </form>
         </section>
       </div>
@@ -403,6 +491,26 @@
     <button v-if="previewImageUrl" class="image-lightbox" @click="previewImageUrl = ''">
       <img :src="previewImageUrl" alt="preview" />
     </button>
+
+    <div
+      v-if="groupMessageMenu.visible && groupMessageMenu.message"
+      class="message-context-menu"
+      :style="{ left: `${groupMessageMenu.x}px`, top: `${groupMessageMenu.y}px` }"
+    >
+      <button type="button" @click="runGroupMessageAction(() => replyTo(groupMessageMenu.message!))">
+        回复
+      </button>
+      <button
+        v-if="groupMessageMenu.message.senderId === currentUserId && groupMessageMenu.message.recallStatus === 0"
+        type="button"
+        @click="runGroupMessageAction(() => handleRecall(groupMessageMenu.message!.messageId))"
+      >
+        撤回
+      </button>
+      <button type="button" class="danger-item" @click="runGroupMessageAction(() => handleDelete(groupMessageMenu.message!.messageId))">
+        删除
+      </button>
+    </div>
   </section>
 </template>
 
@@ -453,6 +561,9 @@ import type { UserSearchItem } from '../api/chat'
 import { listFriends, type Friend } from '../api/friend'
 import { createChatSocket, type ChatSocketEvent } from '../api/chatSocket'
 import { uploadFile, uploadImage } from '../api/file'
+import AvatarFrame from '../components/AvatarFrame.vue'
+import SvgIcon from '../components/SvgIcon.vue'
+import { resolveAssetUrl } from '../utils/assets'
 
 const groups = ref<GroupSummary[]>([])
 const activeGroup = ref<GroupSummary | null>(null)
@@ -489,6 +600,8 @@ const mentionUserIdsDraft = ref<number[]>([])
 const replyTarget = ref<GroupMessage | null>(null)
 const notice = ref('')
 const currentUserId = ref(0)
+const currentUserDisplayName = ref('我')
+const currentUserAvatarUrl = ref('')
 const loadingGroups = ref(false)
 const loadingMessages = ref(false)
 const loadingEarlierMessages = ref(false)
@@ -500,6 +613,16 @@ const loadingJoinRequests = ref(false)
 const loadingMyJoinRequests = ref(false)
 const loadingNotifications = ref(false)
 const loadingFiles = ref(false)
+const showGroupTools = ref(false)
+const groupToolMode = ref<'join' | 'mine' | 'audit'>('join')
+const showMentionMenu = ref(false)
+const openPanels = ref({
+  profile: true,
+  notice: true,
+  files: false,
+  invite: false,
+  members: true,
+})
 const creatingGroup = ref(false)
 const sending = ref(false)
 const savingNotice = ref(false)
@@ -517,6 +640,14 @@ const socket = ref<WebSocket | null>(null)
 const messagePage = ref(1)
 const messagePageSize = 30
 const hasMoreMessages = ref(false)
+const groupMessageMenuWidth = 172
+const groupMessageMenuHeight = 196
+const groupMessageMenu = ref<{ visible: boolean; x: number; y: number; message: GroupMessage | null }>({
+  visible: false,
+  x: 0,
+  y: 0,
+  message: null,
+})
 
 const selectedMemberIds = computed(() => selectedMembers.value.map((member) => member.userId))
 const canCreateGroup = computed(() => newGroupName.value.trim().length >= 3 && selectedMembers.value.length >= 1)
@@ -529,14 +660,84 @@ const canMentionAll = computed(() => canManageGroup.value)
 onMounted(async () => {
   const authData = localStorage.getItem('authData')
   if (authData) {
-    currentUserId.value = JSON.parse(authData).userId
+    const data = JSON.parse(authData)
+    currentUserId.value = data.userId
+    currentUserDisplayName.value = data.nickname || data.email || '我'
+    currentUserAvatarUrl.value = data.avatarUrl || ''
   }
+  window.addEventListener('pointerdown', handleGlobalPointerDown)
+  window.addEventListener('keydown', handleEscapeClose)
+  window.addEventListener('scroll', closeGroupMessageMenu, true)
   connectSocket()
   await Promise.all([loadGroups(), loadFriends()])
 })
 
+async function openGroupTools(mode: 'join' | 'mine' | 'audit') {
+  groupToolMode.value = mode
+  showGroupTools.value = true
+  if (mode === 'mine') {
+    await loadMyJoinRequests()
+    return
+  }
+  if (mode === 'audit') {
+    if (activeGroup.value && canManageGroup.value) {
+      await loadJoinRequests()
+    } else {
+      await loadNotifications()
+    }
+  }
+}
+
+function togglePanel(panel: keyof typeof openPanels.value) {
+  openPanels.value[panel] = !openPanels.value[panel]
+}
+
+function openGroupMessageMenu(event: MouseEvent, message: GroupMessage) {
+  const padding = 12
+  const maxX = Math.max(padding, window.innerWidth - groupMessageMenuWidth - padding)
+  const maxY = Math.max(padding, window.innerHeight - groupMessageMenuHeight - padding)
+  groupMessageMenu.value = {
+    visible: true,
+    x: Math.min(event.clientX, maxX),
+    y: Math.min(event.clientY, maxY),
+    message,
+  }
+}
+
+function closeGroupMessageMenu() {
+  groupMessageMenu.value.visible = false
+  groupMessageMenu.value.message = null
+}
+
+function handleGlobalPointerDown(event: PointerEvent) {
+  const target = event.target
+  if (groupMessageMenu.value.visible) {
+    if (target instanceof Element && target.closest('.message-context-menu')) return
+    closeGroupMessageMenu()
+  }
+  if (showMentionMenu.value) {
+    if (target instanceof Element && target.closest('.mention-menu-shell')) return
+    showMentionMenu.value = false
+  }
+}
+
+function handleEscapeClose(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeGroupMessageMenu()
+    showMentionMenu.value = false
+  }
+}
+
+async function runGroupMessageAction(action: () => Promise<void> | void) {
+  closeGroupMessageMenu()
+  await action()
+}
+
 onBeforeUnmount(() => {
   socket.value?.close()
+  window.removeEventListener('pointerdown', handleGlobalPointerDown)
+  window.removeEventListener('keydown', handleEscapeClose)
+  window.removeEventListener('scroll', closeGroupMessageMenu, true)
 })
 
 function connectSocket() {
@@ -573,7 +774,7 @@ async function handleSocketEvent(event: ChatSocketEvent) {
       groups.value = groups.value.filter((group) => group.groupId !== payload.group?.groupId)
       if (activeGroup.value?.groupId === payload.group.groupId) {
         resetActiveGroup()
-        notice.value = 'Group has been dissolved'
+        notice.value = '群聊已解散'
       }
       return
     }
@@ -596,7 +797,7 @@ async function loadGroups() {
       activeGroup.value = groups.value.find((group) => group.groupId === activeGroup.value?.groupId) ?? activeGroup.value
     }
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to load groups'
+    notice.value = error instanceof Error ? error.message : '加载群聊失败'
   } finally {
     loadingGroups.value = false
   }
@@ -710,7 +911,7 @@ async function loadEarlierMessages() {
       element.scrollTop = element.scrollHeight - previousHeight
     }
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to load earlier messages'
+    notice.value = error instanceof Error ? error.message : '加载更早消息失败'
   } finally {
     loadingEarlierMessages.value = false
   }
@@ -727,7 +928,7 @@ async function handleUserSearch() {
       )
       .map(friendToUserSearchItem)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'User search failed'
+    notice.value = error instanceof Error ? error.message : '搜索用户失败'
   } finally {
     searchingUsers.value = false
   }
@@ -741,19 +942,19 @@ async function handleGroupSearch() {
     const myGroupIds = new Set(groups.value.map((group) => group.groupId))
     groupResults.value = page.list.filter((group) => !myGroupIds.has(group.groupId))
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Group search failed'
+    notice.value = error instanceof Error ? error.message : '搜索群聊失败'
   } finally {
     searchingGroups.value = false
   }
 }
 
 async function requestJoin(group: GroupSummary) {
-  const message = window.prompt(`Request to join ${group.groupName}`, '')
+  const message = window.prompt(`申请加入 ${group.groupName}`, '')
   if (message === null) return
   try {
     await requestJoinGroup(group.groupId, message)
     await loadMyJoinRequests()
-    notice.value = 'Join request sent'
+    notice.value = '入群申请已发送'
   } catch (error) {
     notice.value = error instanceof Error ? error.message : '入群申请失败'
   }
@@ -764,7 +965,7 @@ async function loadMyJoinRequests() {
   try {
     myJoinRequests.value = await listMyGroupJoinRequests()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load my requests failed'
+    notice.value = error instanceof Error ? error.message : '加载我的申请失败'
   } finally {
     loadingMyJoinRequests.value = false
   }
@@ -778,7 +979,7 @@ async function joinByInvite() {
     await loadGroups()
     await selectGroup(group)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Join by invite failed'
+    notice.value = error instanceof Error ? error.message : '通过邀请码入群失败'
   }
 }
 
@@ -795,7 +996,7 @@ async function handleInviteSearch() {
       )
       .map(friendToUserSearchItem)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Invite search failed'
+    notice.value = error instanceof Error ? error.message : '搜索邀请成员失败'
   } finally {
     searchingInvites.value = false
   }
@@ -808,7 +1009,7 @@ async function inviteUser(userId: number) {
     inviteResults.value = inviteResults.value.filter((user) => user.userId !== userId)
     await loadGroups()
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Invite failed'
+    notice.value = error instanceof Error ? error.message : '邀请成员失败'
   }
 }
 
@@ -818,7 +1019,7 @@ async function loadJoinRequests() {
   try {
     joinRequests.value = await listGroupJoinRequests(activeGroup.value.groupId)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load join requests failed'
+    notice.value = error instanceof Error ? error.message : '加载入群申请失败'
   } finally {
     loadingJoinRequests.value = false
   }
@@ -833,7 +1034,7 @@ async function reviewJoin(request: GroupJoinRequest, approve: boolean) {
     joinRequests.value = joinRequests.value.filter((item) => item.requestId !== request.requestId)
     await Promise.all([loadGroups(), loadNotifications()])
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Review join request failed'
+    notice.value = error instanceof Error ? error.message : '处理入群申请失败'
   }
 }
 
@@ -844,7 +1045,7 @@ async function loadNotifications() {
     const page = await listGroupNotifications(activeGroup.value.groupId)
     notifications.value = page.list
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load notifications failed'
+    notice.value = error instanceof Error ? error.message : '加载通知失败'
   } finally {
     loadingNotifications.value = false
   }
@@ -857,7 +1058,7 @@ async function loadFiles() {
     const page = await listGroupFiles(activeGroup.value.groupId)
     groupFiles.value = page.list
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Load files failed'
+    notice.value = error instanceof Error ? error.message : '加载文件失败'
   } finally {
     loadingFiles.value = false
   }
@@ -911,7 +1112,7 @@ async function handleCreateGroup() {
     await loadGroups()
     await selectGroup(group)
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to create group'
+    notice.value = error instanceof Error ? error.message : '创建群聊失败'
   } finally {
     creatingGroup.value = false
   }
@@ -939,7 +1140,7 @@ async function handleSend() {
     mentionUserIdsDraft.value = []
     replyTarget.value = null
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Failed to send message'
+    notice.value = error instanceof Error ? error.message : '发送消息失败'
   } finally {
     sending.value = false
   }
@@ -952,7 +1153,7 @@ function replyTo(message: GroupMessage) {
 function chooseMentions() {
   const candidates = members.value.filter((member) => member.userId !== currentUserId.value)
   const rawValue = window.prompt(
-    'Mention member IDs, separated by comma',
+    '输入要提及的成员 ID，多个用逗号分隔',
     candidates.map((member) => `${member.userId}:${member.groupNickname || member.nickname || member.email}`).join(', '),
   )
   if (!rawValue) return
@@ -974,7 +1175,7 @@ async function handleImageSelect(event: Event) {
     await sendGroupMessage(activeGroup.value.groupId, '', 'image', result.fileId)
     if (imageInput.value) imageInput.value.value = ''
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'Image upload failed'
+    notice.value = error instanceof Error ? error.message : '图片上传失败'
   } finally {
     sending.value = false
   }
@@ -989,7 +1190,7 @@ async function handleFileSelect(event: Event) {
     await sendGroupMessage(activeGroup.value.groupId, result.fileUrl, 'file', result.fileId)
     if (fileInput.value) fileInput.value.value = ''
   } catch (error) {
-    notice.value = error instanceof Error ? error.message : 'File upload failed'
+    notice.value = error instanceof Error ? error.message : '文件上传失败'
   } finally {
     sending.value = false
   }
@@ -998,7 +1199,7 @@ async function handleFileSelect(event: Event) {
 async function handleRecall(messageId: number) {
   if (!activeGroup.value) return
   try {
-    if (!window.confirm('Recall this message?')) return
+    if (!window.confirm('确认撤回这条消息吗？')) return
     await recallGroupMessage(activeGroup.value.groupId, messageId)
     if (messageKeyword.value.trim()) {
       await handleMessageSearch()
@@ -1013,7 +1214,7 @@ async function handleRecall(messageId: number) {
 async function handleDelete(messageId: number) {
   if (!activeGroup.value) return
   try {
-    if (!window.confirm('Delete this message from the group view?')) return
+    if (!window.confirm('确认在群聊视图中删除这条消息吗？')) return
     await deleteGroupMessage(activeGroup.value.groupId, messageId)
     if (messageKeyword.value.trim()) {
       await handleMessageSearch()
@@ -1112,7 +1313,7 @@ async function saveGroupProfile() {
 
 async function leaveActiveGroup() {
   if (!activeGroup.value) return
-  if (!window.confirm(`Leave ${activeGroup.value.groupName}?`)) return
+  if (!window.confirm(`确认退出群聊 ${activeGroup.value.groupName} 吗？`)) return
   try {
     await leaveGroup(activeGroup.value.groupId)
     resetActiveGroup()
@@ -1124,7 +1325,7 @@ async function leaveActiveGroup() {
 
 async function dissolveActiveGroup() {
   if (!activeGroup.value) return
-  if (!window.confirm(`Dissolve ${activeGroup.value.groupName}? This cannot be undone.`)) return
+  if (!window.confirm(`确认解散群聊 ${activeGroup.value.groupName} 吗？该操作不可撤销。`)) return
   try {
     await dissolveGroup(activeGroup.value.groupId)
     resetActiveGroup()
@@ -1136,7 +1337,7 @@ async function dissolveActiveGroup() {
 
 async function transferOwnerTo(member: GroupMember) {
   if (!activeGroup.value) return
-  if (!window.confirm(`Transfer group owner to ${member.nickname || member.email}?`)) return
+  if (!window.confirm(`确认将群主转让给 ${member.nickname || member.email} 吗？`)) return
   try {
     members.value = await transferGroupOwner(activeGroup.value.groupId, member.userId)
     await loadGroups()
@@ -1201,7 +1402,7 @@ function isMuted(member: GroupMember) {
 function memberStatus(member: GroupMember) {
   const status = [roleLabel(member.role)]
   if (isMuted(member)) {
-    status.push(`Muted until ${formatTime(member.muteUntil || '')}`)
+    status.push(`禁言至 ${formatTime(member.muteUntil || '')}`)
   }
   return status.join(' | ')
 }
@@ -1213,11 +1414,11 @@ async function toggleMute(member: GroupMember) {
       members.value = await unmuteGroupMember(activeGroup.value.groupId, member.userId)
       return
     }
-    const rawMinutes = window.prompt('Mute minutes', '10')
+    const rawMinutes = window.prompt('禁言时长（分钟）', '10')
     if (!rawMinutes) return
     const minutes = Number(rawMinutes)
     if (!Number.isFinite(minutes) || minutes < 1) {
-      notice.value = 'Mute minutes invalid'
+      notice.value = '禁言时长无效'
       return
     }
     members.value = await muteGroupMember(activeGroup.value.groupId, member.userId, minutes)
@@ -1228,7 +1429,7 @@ async function toggleMute(member: GroupMember) {
 
 async function removeMemberFromGroup(member: GroupMember) {
   if (!activeGroup.value) return
-  if (!window.confirm(`Remove ${member.nickname || member.email} from this group?`)) return
+  if (!window.confirm(`确认将 ${member.nickname || member.email} 移出该群聊吗？`)) return
   try {
     await removeGroupMember(activeGroup.value.groupId, member.userId)
     await Promise.all([loadMembers(), loadGroups()])
@@ -1246,6 +1447,10 @@ function roleLabel(role: number) {
 function memberName(userId: number) {
   const member = members.value.find((item) => item.userId === userId)
   return member?.groupNickname || member?.nickname || member?.email || String(userId)
+}
+
+function memberAvatar(userId: number) {
+  return members.value.find((item) => item.userId === userId)?.avatarUrl || ''
 }
 
 function joinRequestStatus(status: number) {
@@ -1320,33 +1525,45 @@ function resetActiveGroup() {
   min-height: 100%;
   height: 100%;
   width: 100%;
-  background: #fff;
-  border: 1px solid #d8e0ea;
-  border-radius: 16px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(79, 140, 255, 0.14), transparent 28%),
+    linear-gradient(135deg, #f8fbff 0%, #eef5ff 42%, #ffffff 100%);
+  border: 1px solid rgba(85, 131, 255, 0.18);
+  border-radius: 28px;
   overflow: hidden;
-  box-shadow: 0 18px 48px rgba(17, 34, 68, 0.08);
+  box-shadow: 0 24px 70px rgba(37, 87, 197, 0.12);
 }
 
 .group-sidebar {
-  border-right: 1px solid #d8e0ea;
-  background: #f7f9fc;
+  border-right: 1px solid rgba(85, 131, 255, 0.14);
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(18px);
   min-height: 0;
   display: flex;
   flex-direction: column;
+  animation: group-rise-in 0.44s ease both;
 }
 
 .group-header,
 .chat-header {
   min-height: 76px;
   padding: 16px;
-  border-bottom: 1px solid #d8e0ea;
+  border-bottom: 1px solid rgba(85, 131, 255, 0.14);
   display: flex;
   align-items: center;
   gap: 12px;
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(16px);
 }
 
 .group-header {
   justify-content: space-between;
+}
+
+.group-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .group-header h2,
@@ -1367,7 +1584,13 @@ function resetActiveGroup() {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border-bottom: 1px solid #d8e0ea;
+  border-bottom: 1px solid rgba(85, 131, 255, 0.14);
+  animation: group-rise-in 0.48s ease both;
+}
+
+.tool-stack {
+  padding: 0;
+  border: 0;
 }
 
 .create-group input,
@@ -1402,10 +1625,12 @@ function resetActiveGroup() {
   gap: 10px;
   width: 100%;
   border: 0;
-  border-radius: 6px;
+  border-radius: 14px;
   padding: 10px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.34);
   text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  animation: group-rise-in 0.34s ease both;
 }
 
 .user-results button,
@@ -1417,7 +1642,9 @@ function resetActiveGroup() {
 .user-results button:hover,
 .group-item:hover,
 .group-item.active {
-  background: #e9eef6;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 16px 34px rgba(37, 87, 197, 0.1);
+  transform: translateY(-2px);
 }
 
 .selected-members {
@@ -1446,10 +1673,17 @@ function resetActiveGroup() {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border-radius: 6px;
-  background: #fff;
-  border: 1px solid #d8e0ea;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(85, 131, 255, 0.14);
   padding: 8px 10px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.request-status-list p:hover {
+  transform: translateY(-1px);
+  border-color: rgba(85, 131, 255, 0.24);
+  box-shadow: 0 12px 26px rgba(37, 87, 197, 0.08);
 }
 
 .notice-unread {
@@ -1470,11 +1704,19 @@ function resetActiveGroup() {
 .file-list a {
   display: grid;
   gap: 4px;
-  border: 1px solid #d8e0ea;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid rgba(85, 131, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
   color: #172033;
   padding: 10px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.file-list a:hover {
+  transform: translateY(-2px);
+  border-color: rgba(85, 131, 255, 0.24);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 34px rgba(37, 87, 197, 0.1);
 }
 
 .file-list small {
@@ -1491,6 +1733,7 @@ function resetActiveGroup() {
 .group-list {
   padding: 8px;
   overflow: auto;
+  flex: 1;
 }
 
 .group-item span:last-child,
@@ -1544,6 +1787,112 @@ function resetActiveGroup() {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  animation: group-rise-in 0.5s ease both;
+  animation-delay: 0.06s;
+}
+
+.group-tool-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-start;
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.group-tool-drawer {
+  display: grid;
+  width: min(520px, 94vw);
+  align-content: start;
+  gap: 16px;
+  overflow: auto;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(251, 253, 255, 0.96), rgba(241, 247, 255, 0.94));
+  backdrop-filter: blur(22px);
+  box-shadow: 18px 0 48px rgba(15, 23, 42, 0.14);
+}
+
+.group-tool-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.group-tool-head h3,
+.group-tool-head p,
+.tool-card h4,
+.empty-inline {
+  margin: 0;
+}
+
+.group-tool-head p,
+.empty-inline {
+  color: #53627d;
+}
+
+.group-tool-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.group-tool-switch button {
+  position: relative;
+  display: grid;
+  min-height: 82px;
+  border: 1px solid rgba(85, 131, 255, 0.18);
+  border-radius: 24px;
+  background: #fff;
+  color: #2f7eff;
+  place-items: center;
+  box-shadow: 0 14px 34px rgba(37, 87, 197, 0.08);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.group-tool-switch button:hover,
+.group-tool-switch button.active {
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+  box-shadow: 0 18px 42px rgba(37, 99, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.group-tool-switch :deep(.ui-icon) {
+  width: 30px;
+  height: 30px;
+}
+
+.tool-tip {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  border-radius: 999px;
+  background: #172033;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0;
+  padding: 5px 9px;
+  pointer-events: none;
+  transform: translate(-50%, 6px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  white-space: nowrap;
+}
+
+.group-tool-switch button:hover .tool-tip,
+.group-tool-switch button:focus-visible .tool-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.tool-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(85, 131, 255, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 34px rgba(37, 87, 197, 0.06);
 }
 
 .empty-group,
@@ -1552,6 +1901,17 @@ function resetActiveGroup() {
   margin: auto;
   color: #748198;
   text-align: center;
+}
+
+.empty-inline {
+  display: grid;
+  min-height: 96px;
+  border: 1px dashed rgba(85, 131, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.52);
+  place-items: center;
+  text-align: center;
+  padding: 18px;
 }
 
 .empty-list {
@@ -1569,8 +1929,9 @@ function resetActiveGroup() {
 .member-panel {
   grid-column: 2;
   grid-row: 1;
-  border-left: 1px solid #d8e0ea;
-  background: #fbfcfe;
+  border-left: 1px solid rgba(85, 131, 255, 0.14);
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(18px);
   padding: 14px;
   overflow: auto;
 }
@@ -1580,14 +1941,57 @@ function resetActiveGroup() {
 .invite-box {
   display: grid;
   gap: 8px;
-  padding-bottom: 14px;
+  padding: 14px 14px 16px;
   margin-bottom: 14px;
-  border-bottom: 1px solid #d8e0ea;
+  border: 1px solid rgba(85, 131, 255, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 14px 32px rgba(37, 87, 197, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.profile-box:hover,
+.announcement-box:hover,
+.invite-box:hover {
+  transform: translateY(-2px);
+  border-color: rgba(85, 131, 255, 0.24);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 20px 42px rgba(37, 87, 197, 0.1);
 }
 
 .member-panel h3 {
   margin: 0 0 10px;
   font-size: 14px;
+}
+
+.section-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  background: transparent;
+  color: #172033;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.section-toggle :deep(.ui-icon) {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.18s ease;
+}
+
+.section-toggle :deep(.ui-icon.open) {
+  transform: rotate(180deg);
+}
+
+.section-body {
+  display: grid;
+  gap: 8px;
+  animation: section-fade-in 0.18s ease both;
 }
 
 .profile-box p,
@@ -1667,12 +2071,20 @@ function resetActiveGroup() {
 
 .member-actions button {
   border: 0;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #e9eef6;
   color: #2457c5;
   cursor: pointer;
   padding: 6px 8px;
   font-size: 12px;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.member-actions button:hover,
+.icon-button:hover,
+.load-more-messages:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(37, 87, 197, 0.12);
 }
 
 .member-actions .danger {
@@ -1700,6 +2112,17 @@ function resetActiveGroup() {
   display: grid;
   gap: 2px;
   color: #53627d;
+  padding: 10px 12px;
+  border: 1px solid rgba(85, 131, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.notification-list p:hover {
+  transform: translateY(-1px);
+  border-color: rgba(85, 131, 255, 0.22);
+  box-shadow: 0 12px 26px rgba(37, 87, 197, 0.08);
 }
 
 .notification-list small {
@@ -1752,24 +2175,50 @@ function resetActiveGroup() {
   padding: 8px 14px;
 }
 
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: min(700px, 94%);
+  animation: group-rise-in 0.32s ease both;
+}
+
+.message-row.mine {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+.message-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.message-label {
+  color: #748198;
+  font-size: 12px;
+  font-weight: 700;
+  padding-inline: 4px;
+}
+
 .message-bubble {
-  align-self: flex-start;
   max-width: min(560px, 86%);
   padding: 10px 12px;
   border-radius: 16px;
-  background: #eef2f7;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(85, 131, 255, 0.12);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
-.message-bubble.mine {
-  align-self: flex-end;
-  background: #dff7ef;
+.message-row.mine .message-bubble {
+  background: rgba(223, 247, 239, 0.84);
 }
 
-.sender-name {
-  display: block;
-  margin-bottom: 6px;
-  color: #2457c5;
-  font-size: 12px;
+.message-bubble:hover {
+  transform: translateY(-1px);
+  border-color: rgba(85, 131, 255, 0.22);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
 }
 
 .message-bubble p {
@@ -1778,20 +2227,17 @@ function resetActiveGroup() {
   overflow-wrap: anywhere;
 }
 
-.message-bubble footer {
-  margin-top: 8px;
-  text-align: right;
+.message-meta {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  align-items: center;
   color: #53627d;
   font-size: 12px;
 }
 
-.message-bubble footer button {
-  margin-left: 6px;
-  border: 0;
-  background: transparent;
-  color: #2457c5;
-  cursor: pointer;
-  font-weight: 700;
+.message-row.mine .message-meta {
+  justify-content: flex-end;
 }
 
 .recalled {
@@ -1850,6 +2296,36 @@ function resetActiveGroup() {
   border: 0;
   background: transparent;
   cursor: zoom-in;
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+.image-preview-button:hover {
+  transform: scale(1.02);
+  filter: saturate(1.04);
+}
+
+.group-item:nth-child(1),
+.member-row:nth-child(1),
+.message-row:nth-child(1) {
+  animation-delay: 0.02s;
+}
+
+.group-item:nth-child(2),
+.member-row:nth-child(2),
+.message-row:nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.group-item:nth-child(3),
+.member-row:nth-child(3),
+.message-row:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+.group-item:nth-child(4),
+.member-row:nth-child(4),
+.message-row:nth-child(4) {
+  animation-delay: 0.11s;
 }
 
 .file-card {
@@ -1892,16 +2368,84 @@ function resetActiveGroup() {
 .composer {
   border-top: 1px solid #d8e0ea;
   padding: 12px;
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
+  display: grid;
+  gap: 12px;
+  align-items: stretch;
+  background: rgba(248, 251, 255, 0.72);
+  backdrop-filter: blur(20px);
 }
 
 .composer textarea {
-  flex: 1;
-  min-height: 42px;
-  max-height: 132px;
+  width: 100%;
+  min-height: 88px;
+  max-height: 164px;
   resize: vertical;
+  border-radius: 18px;
+}
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.composer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-icon {
+  width: 40px;
+  min-width: 40px;
+  border-radius: 12px;
+}
+
+.mention-menu-shell {
+  position: relative;
+}
+
+.mention-menu-popover {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 12;
+  display: grid;
+  min-width: 140px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 16px;
+  background: rgba(18, 28, 45, 0.9);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.24);
+  animation: menu-fade-in 0.16s ease both;
+}
+
+.mention-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #f8fbff;
+  cursor: pointer;
+  padding: 10px 12px;
+}
+
+.mention-menu-item:hover,
+.mention-menu-item.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.composer-status {
+  margin-left: auto;
+  color: #53627d;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .avatar {
@@ -1926,11 +2470,12 @@ function resetActiveGroup() {
 
 .icon-button {
   border: 0;
-  border-radius: 6px;
+  border-radius: 12px;
   background: #e9eef6;
   color: #2457c5;
   cursor: pointer;
   padding: 8px 10px;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .compact {
@@ -1965,6 +2510,77 @@ function resetActiveGroup() {
   border-radius: 16px;
 }
 
+.message-context-menu {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  min-width: 156px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 18px;
+  background: rgba(18, 28, 45, 0.86);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.26);
+  animation: menu-fade-in 0.16s ease both;
+}
+
+.message-context-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #f8fbff;
+  cursor: pointer;
+  padding: 10px 12px;
+}
+
+.message-context-menu button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.message-context-menu .danger-item {
+  color: #ffb4b4;
+}
+
+@keyframes group-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes section-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes menu-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 980px) {
   .group-workspace {
     grid-template-columns: 1fr;
@@ -1993,11 +2609,26 @@ function resetActiveGroup() {
   }
 
   .composer {
-    flex-wrap: wrap;
+    gap: 10px;
   }
 
-  .composer textarea {
-    flex-basis: 100%;
+  .composer-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .composer-tools,
+  .composer-status,
+  .send-btn {
+    width: 100%;
+  }
+
+  .composer-tools {
+    justify-content: space-between;
+  }
+
+  .composer-status {
+    text-align: left;
   }
 }
 </style>

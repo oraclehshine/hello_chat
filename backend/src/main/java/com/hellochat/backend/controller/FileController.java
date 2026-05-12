@@ -6,6 +6,10 @@ import com.hellochat.backend.common.TokenProvider;
 import com.hellochat.backend.dto.UploadResponse;
 import com.hellochat.backend.service.FileStorageService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.net.URI;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,5 +35,11 @@ public class FileController {
         @RequestParam(defaultValue = "attachment") String scene
     ) {
         return ApiResponse.success(fileStorageService.upload(CurrentUser.requireUserId(request, tokenProvider), file, scene));
+    }
+
+    @GetMapping("/redirect")
+    public ResponseEntity<Void> redirect(@RequestParam("source") String sourceUrl) {
+        URI target = fileStorageService.resolveAccessUri(sourceUrl);
+        return ResponseEntity.status(HttpStatus.FOUND).location(target).build();
     }
 }

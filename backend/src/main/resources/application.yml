@@ -27,6 +27,10 @@
     baselineOnMigrate: true
     validateOnMigrate: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 220MB
 
 server:
   port: ${SERVER_PORT:8083}
@@ -40,11 +44,11 @@ hello-chat:
 
 aliyun:
   oss:
-    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-hangzhou.aliyuncs.com}
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-accelerate.aliyuncs.com}
     access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
     access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
     bucket-name: ${ALIYUN_OSS_BUCKET_NAME:hello-chat-im}
-    public-url-prefix: ${ALIYUN_OSS_PUBLIC_URL_PREFIX:https://hello-chat-im.oss-cn-hangzhou.aliyuncs.com/}
+    public-url-prefix: ${ALIYUN_OSS_PUBLIC_URL_PREFIX:https://hello-chat-im.oss-accelerate.aliyuncs.com/}
 
 management:
   endpoints:

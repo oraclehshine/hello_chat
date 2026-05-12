@@ -6,13 +6,15 @@
           <h2>单聊</h2>
           <p>私聊会话</p>
         </div>
-        <button class="icon-button" :disabled="loadingChats" title="刷新" @click="loadChats">刷新</button>
+        <button class="icon-button" :disabled="loadingChats" title="刷新" @click="loadChats">
+          <SvgIcon name="refresh" />
+        </button>
       </header>
 
       <div class="search-box">
         <input v-model="searchKeyword" type="search" placeholder="搜索邮箱或昵称" @keyup.enter="handleSearch" />
-        <button class="secondary-btn compact" :disabled="searching" @click="handleSearch">
-          {{ searching ? '...' : '搜索' }}
+        <button class="secondary-btn compact icon-only-btn" :disabled="searching" title="搜索" @click="handleSearch">
+          <SvgIcon name="search" />
         </button>
       </div>
 
@@ -23,7 +25,7 @@
           class="user-result"
           @click="startChat(user.userId)"
         >
-          <span class="avatar">{{ initials(user.nickname || user.email) }}</span>
+          <AvatarFrame :name="user.nickname || user.email" size="sm" />
           <span>
             <strong>{{ user.nickname || user.email }}</strong>
             <small>{{ user.email }}</small>
@@ -39,10 +41,7 @@
           :class="{ active: activeChat?.chatId === chat.chatId }"
           @click="selectChat(chat)"
         >
-          <span class="avatar">
-            <img v-if="chat.targetAvatarUrl" :src="chat.targetAvatarUrl" alt="" />
-            <span v-else>{{ initials(chat.targetNickname || chat.targetEmail) }}</span>
-          </span>
+          <AvatarFrame :src="chat.targetAvatarUrl" :name="chat.targetNickname || chat.targetEmail" size="md" />
           <span class="conversation-main">
             <span class="conversation-title">
               <strong>{{ chat.targetNickname || chat.targetEmail }}</strong>
@@ -58,10 +57,7 @@
 
     <main class="chat-panel">
       <header v-if="activeChat" class="chat-header">
-        <span class="avatar">
-          <img v-if="activeChat.targetAvatarUrl" :src="activeChat.targetAvatarUrl" alt="" />
-          <span v-else>{{ initials(activeChat.targetNickname || activeChat.targetEmail) }}</span>
-        </span>
+        <AvatarFrame :src="activeChat.targetAvatarUrl" :name="activeChat.targetNickname || activeChat.targetEmail" size="md" />
         <div class="chat-header-main">
           <h2>{{ activeChat.targetNickname || activeChat.targetEmail }}</h2>
           <p>{{ typingChatId === activeChat.chatId ? '对方正在输入...' : activeChat.targetEmail }}</p>
@@ -78,10 +74,12 @@
       <div v-else class="message-area">
         <div class="message-search">
           <input v-model="messageKeyword" type="search" placeholder="搜索当前会话消息" @keyup.enter="handleMessageSearch" />
-          <button class="secondary-btn compact" :disabled="searchingMessages" @click="handleMessageSearch">
-            {{ searchingMessages ? '...' : '搜索' }}
+          <button class="secondary-btn compact icon-only-btn" :disabled="searchingMessages" title="搜索消息" @click="handleMessageSearch">
+            <SvgIcon name="search" />
           </button>
-          <button v-if="messageKeyword" class="secondary-btn compact" @click="clearMessageSearch">清空</button>
+          <button v-if="messageKeyword" class="secondary-btn compact icon-only-btn" title="清空" @click="clearMessageSearch">
+            <SvgIcon name="close" />
+          </button>
         </div>
         <div ref="messageListRef" class="message-list" @scroll="handleMessageScroll">
           <div v-if="loadingMessages" class="message-state">消息加载中...</div>
@@ -99,40 +97,47 @@
           <article
             v-for="message in orderedMessages"
             :key="message.messageId"
-            class="message-bubble"
+            class="message-row"
             :class="{ mine: message.senderId === currentUserId }"
+            @contextmenu.prevent="openMessageMenu($event, message)"
           >
-            <p v-if="message.recallStatus === 1" class="recalled">消息已撤回</p>
-            <template v-else>
-              <p v-if="message.messageType === 'image'">
-                <button class="image-preview-button" @click="previewImageUrl = message.content">
-                  <img class="message-image" :src="message.content" alt="chat image" />
-                </button>
-              </p>
-              <p v-else-if="message.messageType === 'file'">
-                <a class="file-card" :href="message.content" target="_blank" rel="noreferrer">
-                  <span class="file-icon">文件</span>
-                  <span class="file-info">
-                    <strong>{{ message.fileName || fileNameFromUrl(message.content) }}</strong>
-                    <small>{{ fileMeta(message) }}</small>
-                  </span>
-                </a>
-              </p>
-              <p v-else>{{ message.content }}</p>
-            </template>
-            <footer>
-              <span v-if="message.pinnedAt" class="pin-label">已置顶</span>
-              <span>{{ formatTime(message.sentAt) }}</span>
-              <span v-if="message.senderId === currentUserId" class="read-label">
-                {{ message.messageStatus === 2 ? '已读' : '已发送' }}
-              </span>
-              <button v-if="!message.pinnedAt" @click="handlePin(message.messageId)">置顶</button>
-              <button v-else @click="handleUnpin(message.messageId)">取消置顶</button>
-              <button v-if="message.senderId === currentUserId && message.recallStatus === 0" @click="handleRecall(message.messageId)">
-                Recall
-              </button>
-              <button @click="handleDelete(message.messageId)">删除</button>
-            </footer>
+            <AvatarFrame
+              :src="message.senderId === currentUserId ? currentUserAvatarUrl : activeChat?.targetAvatarUrl"
+              :name="message.senderId === currentUserId ? currentUserDisplayName : activeChat?.targetNickname || activeChat?.targetEmail || 'U'"
+              size="sm"
+            />
+            <div class="message-stack">
+              <div v-if="message.senderId !== currentUserId" class="message-label">
+                {{ activeChat?.targetNickname || activeChat?.targetEmail || '对方' }}
+              </div>
+              <div class="message-bubble">
+                <p v-if="message.recallStatus === 1" class="recalled">消息已撤回</p>
+                <template v-else>
+                  <p v-if="message.messageType === 'image'">
+                    <button class="image-preview-button" @click="previewImageUrl = resolveAssetUrl(message.content)">
+                      <img class="message-image" :src="resolveAssetUrl(message.content)" alt="chat image" />
+                    </button>
+                  </p>
+                  <p v-else-if="message.messageType === 'file'">
+                    <a class="file-card" :href="resolveAssetUrl(message.content)" target="_blank" rel="noreferrer">
+                      <span class="file-icon">文件</span>
+                      <span class="file-info">
+                        <strong>{{ message.fileName || fileNameFromUrl(message.content) }}</strong>
+                        <small>{{ fileMeta(message) }}</small>
+                      </span>
+                    </a>
+                  </p>
+                  <p v-else>{{ message.content }}</p>
+                </template>
+              </div>
+              <footer class="message-meta">
+                <span v-if="message.pinnedAt" class="pin-label">已置顶</span>
+                <span>{{ formatTime(message.sentAt) }}</span>
+                <span v-if="message.senderId === currentUserId" class="read-label">
+                  {{ message.messageStatus === 2 ? '已读' : '已发送' }}
+                </span>
+              </footer>
+            </div>
           </article>
         </div>
 
@@ -147,11 +152,20 @@
           />
           <input ref="imageInput" class="hidden-file-input" type="file" accept="image/*" @change="handleImageSelect" />
           <input ref="fileInput" class="hidden-file-input" type="file" @change="handleFileSelect" />
-          <button type="button" class="secondary-btn compact" :disabled="sending" @click="pickImage">图片</button>
-          <button type="button" class="secondary-btn compact" :disabled="sending" @click="pickFile">文件</button>
-          <button class="primary-btn compact" :disabled="sending || !draft.trim()">
-            {{ sending ? '发送中' : '发送' }}
-          </button>
+          <div class="composer-toolbar">
+            <div class="composer-tools">
+              <button type="button" class="secondary-btn compact icon-only-btn composer-icon" :disabled="sending" title="发送图片" @click="pickImage">
+                <SvgIcon name="image" />
+              </button>
+              <button type="button" class="secondary-btn compact icon-only-btn composer-icon" :disabled="sending" title="发送文件" @click="pickFile">
+                <SvgIcon name="file" />
+              </button>
+            </div>
+            <button class="primary-btn compact send-btn" :disabled="sending || !draft.trim()" title="发送">
+              <SvgIcon name="send" />
+              <span>{{ sending ? '发送中' : '发送' }}</span>
+            </button>
+          </div>
         </form>
       </div>
     </main>
@@ -159,6 +173,29 @@
     <button v-if="previewImageUrl" class="image-lightbox" @click="previewImageUrl = ''">
       <img :src="previewImageUrl" alt="preview" />
     </button>
+
+    <div
+      v-if="messageMenu.visible && messageMenu.message"
+      class="message-context-menu"
+      :style="{ left: `${messageMenu.x}px`, top: `${messageMenu.y}px` }"
+    >
+      <button v-if="!messageMenu.message.pinnedAt" type="button" @click="runMessageAction(() => handlePin(messageMenu.message!.messageId))">
+        置顶
+      </button>
+      <button v-else type="button" @click="runMessageAction(() => handleUnpin(messageMenu.message!.messageId))">
+        取消置顶
+      </button>
+      <button
+        v-if="messageMenu.message.senderId === currentUserId && messageMenu.message.recallStatus === 0"
+        type="button"
+        @click="runMessageAction(() => handleRecall(messageMenu.message!.messageId))"
+      >
+        撤回
+      </button>
+      <button type="button" class="danger-item" @click="runMessageAction(() => handleDelete(messageMenu.message!.messageId))">
+        删除
+      </button>
+    </div>
   </section>
 </template>
 
@@ -183,6 +220,9 @@ import {
 } from '../api/chat'
 import { createChatSocket, type ChatSocketEvent } from '../api/chatSocket'
 import { uploadFile, uploadImage } from '../api/file'
+import AvatarFrame from '../components/AvatarFrame.vue'
+import SvgIcon from '../components/SvgIcon.vue'
+import { resolveAssetUrl } from '../utils/assets'
 
 const chats = ref<ChatSummary[]>([])
 const activeChat = ref<ChatSummary | null>(null)
@@ -194,6 +234,8 @@ const messageKeyword = ref('')
 const searchingMessages = ref(false)
 const notice = ref('')
 const currentUserId = ref(0)
+const currentUserDisplayName = ref('我')
+const currentUserAvatarUrl = ref('')
 const loadingChats = ref(false)
 const loadingMessages = ref(false)
 const loadingEarlierMessages = ref(false)
@@ -209,6 +251,14 @@ const previewImageUrl = ref('')
 const messagePage = ref(1)
 const messagePageSize = 30
 const hasMoreMessages = ref(false)
+const messageMenuWidth = 160
+const messageMenuHeight = 180
+const messageMenu = ref<{ visible: boolean; x: number; y: number; message: ChatMessage | null }>({
+  visible: false,
+  x: 0,
+  y: 0,
+  message: null,
+})
 let typingStopTimer: number | undefined
 let typingIndicatorTimer: number | undefined
 
@@ -217,8 +267,14 @@ const orderedMessages = computed(() => [...messages.value].reverse())
 onMounted(async () => {
   const authData = localStorage.getItem('authData')
   if (authData) {
-    currentUserId.value = JSON.parse(authData).userId
+    const data = JSON.parse(authData)
+    currentUserId.value = data.userId
+    currentUserDisplayName.value = data.nickname || data.email || '我'
+    currentUserAvatarUrl.value = data.avatarUrl || ''
   }
+  window.addEventListener('pointerdown', handleGlobalPointerDown)
+  window.addEventListener('keydown', handleEscapeClose)
+  window.addEventListener('scroll', closeMessageMenu, true)
   connectSocket()
   await loadChats()
 })
@@ -226,6 +282,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   socket.value?.close()
   clearTypingTimers()
+  window.removeEventListener('pointerdown', handleGlobalPointerDown)
+  window.removeEventListener('keydown', handleEscapeClose)
+  window.removeEventListener('scroll', closeMessageMenu, true)
 })
 
 function connectSocket() {
@@ -517,6 +576,41 @@ async function handleUnpin(messageId: number) {
   }
 }
 
+function openMessageMenu(event: MouseEvent, message: ChatMessage) {
+  const padding = 12
+  const maxX = Math.max(padding, window.innerWidth - messageMenuWidth - padding)
+  const maxY = Math.max(padding, window.innerHeight - messageMenuHeight - padding)
+  messageMenu.value = {
+    visible: true,
+    x: Math.min(event.clientX, maxX),
+    y: Math.min(event.clientY, maxY),
+    message,
+  }
+}
+
+function closeMessageMenu() {
+  messageMenu.value.visible = false
+  messageMenu.value.message = null
+}
+
+function handleGlobalPointerDown(event: PointerEvent) {
+  if (!messageMenu.value.visible) return
+  const target = event.target
+  if (target instanceof Element && target.closest('.message-context-menu')) return
+  closeMessageMenu()
+}
+
+function handleEscapeClose(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeMessageMenu()
+  }
+}
+
+async function runMessageAction(action: () => Promise<void>) {
+  closeMessageMenu()
+  await action()
+}
+
 function initials(value: string) {
   return value.slice(0, 2).toUpperCase()
 }
@@ -586,16 +680,18 @@ async function scrollMessagesToBottom() {
   min-height: 100%;
   height: 100%;
   width: 100%;
-  background: #fff;
-  border: 1px solid #d8e0ea;
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 28px;
+  backdrop-filter: blur(24px);
   overflow: hidden;
   box-shadow: 0 18px 48px rgba(17, 34, 68, 0.08);
 }
 
 .chat-sidebar {
-  border-right: 1px solid #d8e0ea;
-  background: #f7f9fc;
+  border-right: 1px solid rgba(255, 255, 255, 0.36);
+  background: rgba(247, 249, 252, 0.44);
+  backdrop-filter: blur(24px);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -605,7 +701,7 @@ async function scrollMessagesToBottom() {
 .chat-header {
   min-height: 76px;
   padding: 16px;
-  border-bottom: 1px solid #d8e0ea;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.34);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -668,6 +764,8 @@ async function scrollMessagesToBottom() {
   border-radius: 6px;
   text-align: left;
   cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  animation: chat-rise-in 0.34s ease both;
 }
 
 .conversation-item {
@@ -678,6 +776,8 @@ async function scrollMessagesToBottom() {
 .conversation-item:hover,
 .conversation-item.active {
   background: #e9eef6;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(37, 87, 197, 0.1);
 }
 
 .conversation-main,
@@ -751,9 +851,12 @@ async function scrollMessagesToBottom() {
 
 .chat-panel {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(24px);
+  overflow: hidden;
 }
 
 .chat-header-main {
@@ -778,6 +881,7 @@ async function scrollMessagesToBottom() {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .message-search {
@@ -828,17 +932,49 @@ async function scrollMessagesToBottom() {
   cursor: not-allowed;
 }
 
-.message-bubble {
-  align-self: flex-start;
-  max-width: min(560px, 86%);
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: #eef2f7;
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: min(680px, 92%);
+  animation: chat-rise-in 0.3s ease both;
 }
 
-.message-bubble.mine {
-  align-self: flex-end;
-  background: #dff7ef;
+.message-row.mine {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+.message-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.message-label {
+  color: #748198;
+  font-size: 12px;
+  font-weight: 700;
+  padding-inline: 4px;
+}
+
+.message-bubble {
+  max-width: min(560px, 86%);
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(18px);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.message-row.mine .message-bubble {
+  background: rgba(222, 247, 239, 0.7);
+}
+
+.message-bubble:hover {
+  transform: translateY(-1px);
+  border-color: rgba(85, 131, 255, 0.2);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
 }
 
 .message-bubble p {
@@ -862,6 +998,12 @@ async function scrollMessagesToBottom() {
   border: 0;
   background: transparent;
   cursor: zoom-in;
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+.image-preview-button:hover {
+  transform: scale(1.02);
+  filter: saturate(1.04);
 }
 
 .file-card {
@@ -906,14 +1048,17 @@ async function scrollMessagesToBottom() {
   font-size: 12px;
 }
 
-.message-bubble footer {
+.message-meta {
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
-  margin-top: 8px;
   font-size: 12px;
   color: #53627d;
+}
+
+.message-row.mine .message-meta {
+  justify-content: flex-end;
 }
 
 .read-label {
@@ -921,7 +1066,6 @@ async function scrollMessagesToBottom() {
   font-weight: 700;
 }
 
-.message-bubble footer button,
 .icon-button {
   border: 0;
   background: transparent;
@@ -930,9 +1074,14 @@ async function scrollMessagesToBottom() {
 }
 
 .icon-button {
-  background: #e9eef6;
-  border-radius: 6px;
-  padding: 8px 10px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  place-items: center;
+  background: #eef4ff;
+  color: #2f7eff;
+  padding: 0;
 }
 
 .pin-label {
@@ -946,23 +1095,45 @@ async function scrollMessagesToBottom() {
 }
 
 .composer {
-  border-top: 1px solid #d8e0ea;
-  padding: 12px;
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.34);
+  padding: 14px;
+  display: grid;
+  flex-shrink: 0;
+  gap: 12px;
+  align-items: stretch;
+  background: rgba(248, 251, 255, 0.46);
+  backdrop-filter: blur(22px);
 }
 
 .composer textarea {
-  flex: 1;
+  width: 100%;
   min-width: 0;
-  min-height: 42px;
-  max-height: 132px;
+  min-height: 88px;
+  max-height: 156px;
   resize: vertical;
   border: 1px solid #d8e0ea;
-  border-radius: 6px;
+  border-radius: 18px;
   padding: 10px 12px;
   background: #fff;
+}
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-icon {
+  width: 40px;
+  min-width: 40px;
+  border-radius: 12px;
 }
 
 .compact {
@@ -993,6 +1164,90 @@ async function scrollMessagesToBottom() {
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
 }
 
+.message-context-menu {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  min-width: 144px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 18px;
+  background: rgba(18, 28, 45, 0.86);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.26);
+  animation: menu-fade-in 0.16s ease both;
+}
+
+.message-context-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #f8fbff;
+  cursor: pointer;
+  padding: 10px 12px;
+}
+
+.message-context-menu button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.message-context-menu .danger-item {
+  color: #ffb4b4;
+}
+
+.conversation-item:nth-child(1),
+.message-row:nth-child(1) {
+  animation-delay: 0.02s;
+}
+
+.conversation-item:nth-child(2),
+.message-row:nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.conversation-item:nth-child(3),
+.message-row:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+.conversation-item:nth-child(4),
+.message-row:nth-child(4) {
+  animation-delay: 0.11s;
+}
+
+.conversation-item:nth-child(5),
+.message-row:nth-child(5) {
+  animation-delay: 0.14s;
+}
+
+@keyframes chat-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes menu-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 860px) {
   .chat-workspace {
     grid-template-columns: 1fr;
@@ -1005,11 +1260,21 @@ async function scrollMessagesToBottom() {
   }
 
   .composer {
-    flex-wrap: wrap;
+    gap: 10px;
   }
 
-  .composer textarea {
-    flex-basis: 100%;
+  .composer-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .composer-tools,
+  .send-btn {
+    width: 100%;
+  }
+
+  .composer-tools {
+    justify-content: flex-start;
   }
 }
 </style>

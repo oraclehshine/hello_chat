@@ -8,15 +8,22 @@ import com.hellochat.backend.entity.FileAsset;
 import com.hellochat.backend.repository.FileAssetRepository;
 import com.hellochat.backend.service.FileStorageService;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Date;
 import org.springframework.beans.factory.ObjectProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class FileStorageServiceImpl implements FileStorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(FileStorageServiceImpl.class);
 
     private static final long IMAGE_MAX_SIZE = 10L * 1024 * 1024;
     private static final long FILE_MAX_SIZE = 100L * 1024 * 1024;
@@ -54,7 +61,23 @@ public class FileStorageServiceImpl implements FileStorageService {
         try {
             OSS ossClient = ossClientProvider.getIfAvailable();
             if (ossClient == null) {
-                throw new IllegalArgumentException("oss is not configured");
+                String configSummary = String.format(
+                    "endpoint=%s, bucket=%s, accessKeyIdPresent=%s, accessKeySecretPresent=%s",
+                    properties.getEndpoint(),
+                    properties.getBucketName(),
+                    properties.getAccessKeyId() != null && !properties.getAccessKeyId().isBlank(),
+                    properties.getAccessKeySecret() != null && !properties.getAccessKeySecret().isBlank()
+                );
+                log.error(
+                    "OSS client unavailable. uploaderId={}, scene={}, fileName={}, contentType={}, objectKey={}, {}",
+                    uploaderId,
+                    safeScene,
+                    originalName,
+                    contentType,
+                    objectKey,
+                    configSummary
+                );
+                throw new IllegalArgumentException("oss client unavailable, please check ALIYUN_OSS_* env");
             }
             ObjectMetadata metadata = new ObjectMetadata();
             metadata.setContentLength(file.getSize());
@@ -62,8 +85,24 @@ public class FileStorageServiceImpl implements FileStorageService {
                 metadata.setContentType(contentType);
             }
             ossClient.putObject(properties.getBucketName(), objectKey, file.getInputStream(), metadata);
-        } catch (IOException ex) {
-            throw new IllegalArgumentException("oss upload failed");
+        } catch (IOException | RuntimeException ex) {
+            log.error(
+                "File upload failed. uploaderId={}, scene={}, bucket={}, endpoint={}, fileName={}, contentType={}, fileSize={}, objectKey={}, errorType={}, errorMessage={}",
+                uploaderId,
+                safeScene,
+                properties.getBucketName(),
+                properties.getEndpoint(),
+                originalName,
+                contentType,
+                file.getSize(),
+                objectKey,
+                ex.getClass().getName(),
+                ex.getMessage(),
+                ex
+            );
+            throw new IllegalArgumentException(
+                "oss upload failed: " + ex.getClass().getSimpleName() + (ex.getMessage() == null ? "" : " - " + ex.getMessage())
+            );
         }
 
         FileAsset asset = new FileAsset();
@@ -85,6 +124,21 @@ public class FileStorageServiceImpl implements FileStorageService {
             saved.getFileSize(),
             saved.getScene()
         );
+    }
+
+    @Override
+    public URI resolveAccessUri(String sourceUrl) {
+        if (sourceUrl == null || sourceUrl.isBlank()) {
+            throw new IllegalArgumentException("source url is required");
+        }
+        OSS ossClient = ossClientProvider.getIfAvailable();
+        if (ossClient == null) {
+            throw new IllegalArgumentException("oss client unavailable, please check ALIYUN_OSS_* env");
+        }
+        String objectKey = extractObjectKey(sourceUrl);
+        Date expiration = new Date(System.currentTimeMillis() + 60L * 60L * 1000L);
+        URL signedUrl = ossClient.generatePresignedUrl(properties.getBucketName(), objectKey, expiration);
+        return URI.create(signedUrl.toString());
     }
 
     private void validateScene(String scene, String contentType, long fileSize) {
@@ -128,6 +182,24 @@ public class FileStorageServiceImpl implements FileStorageService {
         }
         String endpoint = properties.getEndpoint();
         return "https://" + properties.getBucketName() + "." + endpoint + "/" + objectKey;
+    }
+
+    private String extractObjectKey(String sourceUrl) {
+        String normalized = sourceUrl.trim();
+        String prefix = properties.getPublicUrlPrefix();
+        if (prefix != null && !prefix.isBlank() && normalized.startsWith(prefix)) {
+            String objectKey = normalized.substring(prefix.endsWith("/") ? prefix.length() : prefix.length() + 1);
+            if (!objectKey.isBlank()) {
+                return objectKey;
+            }
+        }
+
+        URI uri = URI.create(normalized);
+        String path = uri.getPath();
+        if (path == null || path.isBlank() || "/".equals(path)) {
+            throw new IllegalArgumentException("invalid oss file url");
+        }
+        return path.startsWith("/") ? path.substring(1) : path;
     }
 
     private String extractExtension(String filename) {

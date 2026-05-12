@@ -2,6 +2,9 @@
 import { computed, ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { logout } from './api/auth'
+import AvatarFrame from './components/AvatarFrame.vue'
+import AuthPosterShowcase from './components/AuthPosterShowcase.vue'
+import dogLogo from './assets/dog.svg'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,7 +25,6 @@ const authData = computed(() => {
 })
 const displayName = computed(() => authData.value.nickname || authData.value.email || 'Hello Chat')
 const displayEmail = computed(() => authData.value.email || '在线工作台')
-const initials = computed(() => displayName.value.slice(0, 2).toUpperCase())
 const avatarUrl = computed(() => authData.value.avatarUrl || '')
 
 async function handleLogout() {
@@ -42,22 +44,12 @@ async function handleLogout() {
   <div v-if="isPublicRoute" class="auth-layout">
     <section class="auth-poster" aria-label="Hello Chat account entrance">
       <div class="brand-ribbon">
-        <span class="brand-mark">HC</span>
+        <img class="brand-logo" :src="dogLogo" alt="Hello Chat logo" />
         <div>
           <strong>Hello Chat</strong>
-          <small>实时聊天工作台</small>
         </div>
       </div>
-      <div class="poster-copy">
-        <p class="eyebrow">Secure messaging</p>
-        <h1>登录后进入你的聊天工作台。</h1>
-        <p>账号入口独立展示，主功能区只保留聊天、好友、群组、朋友圈和个人资料，让界面更接近主流 IM 产品。</p>
-      </div>
-      <div>
-        <div class="floating-card card-one">私聊消息</div>
-        <div class="floating-card card-two">群聊协作</div>
-        <div class="floating-card card-three">朋友圈动态</div>
-      </div>
+      <AuthPosterShowcase />
     </section>
 
     <main class="auth-main">
@@ -68,21 +60,16 @@ async function handleLogout() {
   <div v-else class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <button class="sidebar-avatar-button" type="button" @click="showProfileMenu = !showProfileMenu">
-          <img v-if="avatarUrl" :src="avatarUrl" alt="" />
-          <span v-else>{{ initials }}</span>
-        </button>
-        <div>
-          <h1>Hello Chat</h1>
-          <p>消息工作台</p>
+        <div class="sidebar-brand-copy">
+          <img class="sidebar-brand-logo" :src="dogLogo" alt="Hello Chat logo" />
         </div>
+        <button class="sidebar-avatar-button" type="button" @click="showProfileMenu = !showProfileMenu">
+          <AvatarFrame :src="avatarUrl" :name="displayName" size="lg" />
+        </button>
 
         <section v-if="showProfileMenu" class="profile-popover">
           <div class="profile-popover-head">
-            <div class="avatar xl">
-              <img v-if="avatarUrl" :src="avatarUrl" alt="" />
-              <span v-else>{{ initials }}</span>
-            </div>
+            <AvatarFrame :src="avatarUrl" :name="displayName" size="xl" />
             <div>
               <h2>{{ displayName }}</h2>
               <p>{{ displayEmail }}</p>
@@ -94,11 +81,36 @@ async function handleLogout() {
       </div>
 
       <nav class="nav-list" aria-label="Main navigation">
-        <RouterLink to="/home">概览</RouterLink>
-        <RouterLink to="/friends">好友</RouterLink>
-        <RouterLink to="/chats">单聊</RouterLink>
-        <RouterLink to="/groups">群聊</RouterLink>
-        <RouterLink to="/moments">朋友圈</RouterLink>
+        <RouterLink to="/home" aria-label="概览">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z" />
+          </svg>
+          <span>概览</span>
+        </RouterLink>
+        <RouterLink to="/friends" aria-label="好友">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.3 0-6 2.1-6 4.7V20h12v-2.3C15 15.1 12.3 13 9 13Zm8.4-1.4a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4ZM17 13c-.8 0-1.6.1-2.3.4 1.5 1.1 2.3 2.6 2.3 4.3V20h4v-2.1c0-2.7-1.8-4.9-4-4.9Z" />
+          </svg>
+          <span>好友</span>
+        </RouterLink>
+        <RouterLink to="/chats" aria-label="单聊">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 4h14a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-7.2L6 21v-4H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Zm2.5 5.5h9v-2h-9v2Zm0 4h6.5v-2H7.5v2Z" />
+          </svg>
+          <span>单聊</span>
+        </RouterLink>
+        <RouterLink to="/groups" aria-label="群聊">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.6 0-6.5 2.2-6.5 5v2h13v-2c0-2.8-2.9-5-6.5-5ZM4.8 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.2 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM4.5 14C2.6 14 .9 15.2.5 17.1V20h3v-2c0-1.4.5-2.8 1.4-4H4.5Zm15 0h-.4c.9 1.2 1.4 2.6 1.4 4v2h3v-2.9c-.4-1.9-2.1-3.1-4-3.1Z" />
+          </svg>
+          <span>群聊</span>
+        </RouterLink>
+        <RouterLink to="/moments" aria-label="朋友圈">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.1-1.3A10 10 0 1 0 12 2Zm0 4.2a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm-5.6 10.2c1.2-2 3.2-3.1 5.6-3.1s4.4 1.1 5.6 3.1A7.5 7.5 0 0 1 12 18.8a7.5 7.5 0 0 1-5.6-2.4Z" />
+          </svg>
+          <span>朋友圈</span>
+        </RouterLink>
       </nav>
     </aside>
 

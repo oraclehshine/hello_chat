@@ -37,7 +37,7 @@ async function submitLogin() {
   <section class="auth-card">
     <p class="eyebrow">Welcome back</p>
     <h2 class="hero-title">登录 Hello Chat</h2>
-    <p class="hero-subtitle">这是独立的账号入口。登录后再进入聊天、群组、朋友圈和个人资料工作台。</p>
+    <p class="hero-subtitle">输入账号信息后即可进入聊天、群组、朋友圈与个人资料。</p>
 
     <div v-if="status" class="notice success">{{ status }}</div>
     <div v-if="error" class="notice error">{{ error }}</div>

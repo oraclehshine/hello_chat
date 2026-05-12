@@ -21,9 +21,7 @@ export async function uploadFile(file: File, scene = 'attachment') {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('scene', scene)
-  const response = await http.post<ApiResponse<UploadResponse>>('/files/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const response = await http.post<ApiResponse<UploadResponse>>('/files/upload', formData)
   return response.data.data
 }
 

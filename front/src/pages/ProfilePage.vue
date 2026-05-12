@@ -7,8 +7,12 @@
         <p>维护头像、昵称、签名和登录邮箱。保存后会同步到左侧头像菜单。</p>
       </div>
       <div class="profile-top-actions">
-        <router-link to="/home" class="secondary-btn compact link-btn">返回概览</router-link>
-        <button type="button" class="primary-btn compact" :disabled="loading" @click="handleUpdateProfile">
+        <router-link to="/home" class="secondary-btn compact link-btn icon-text-btn">
+          <SvgIcon name="chat" />
+          返回概览
+        </router-link>
+        <button type="button" class="primary-btn compact icon-text-btn" :disabled="loading" @click="handleUpdateProfile">
+          <SvgIcon name="send" />
           {{ loading ? '保存中...' : '保存资料' }}
         </button>
       </div>
@@ -19,10 +23,13 @@
 
     <div class="profile-layout">
       <aside class="profile-preview-panel">
-        <div class="avatar-preview hero-avatar">
-          <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" alt="avatar" />
-          <span v-else>{{ avatarInitials }}</span>
-        </div>
+        <button class="hero-avatar-button" type="button" @click="openAvatarDialog">
+          <AvatarFrame :src="profileForm.avatarUrl" :name="avatarInitials" size="hero" interactive />
+          <span class="hero-avatar-hint">
+            <SvgIcon name="image" />
+            更换头像
+          </span>
+        </button>
         <div class="profile-preview-main">
           <h3>{{ profileForm.nickname || currentEmail || 'Hello Chat' }}</h3>
           <p>{{ profileForm.signature || '还没有设置个性签名' }}</p>
@@ -64,20 +71,6 @@
               <small class="field-hint">当前版本仅展示电话，不支持修改。</small>
             </div>
 
-            <div class="field avatar-field">
-              <label>头像</label>
-              <div class="avatar-upload">
-                <div class="avatar-preview">
-                  <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" alt="avatar" />
-                  <span v-else>{{ avatarInitials }}</span>
-                </div>
-                <div class="avatar-actions">
-                  <input ref="avatarInput" type="file" accept="image/*" @change="handleAvatarSelect" />
-                  <small class="field-hint">选择图片后会先上传到 OSS，保存资料后生效。</small>
-                </div>
-              </div>
-            </div>
-
             <div class="field signature-field">
               <label for="profile-signature">个性签名</label>
               <textarea id="profile-signature" v-model="profileForm.signature" placeholder="输入你的个性签名" rows="5"></textarea>
@@ -91,7 +84,8 @@
               <h3>账号安全</h3>
               <p>修改登录邮箱需要通过新邮箱验证码确认。</p>
             </div>
-            <button type="button" class="secondary-btn compact" @click="toggleEmailEdit">
+            <button type="button" class="secondary-btn compact icon-text-btn" @click="toggleEmailEdit">
+              <SvgIcon name="edit" />
               {{ showEmailEdit ? '收起' : '修改邮箱' }}
             </button>
           </header>
@@ -132,6 +126,33 @@
         </section>
       </main>
     </div>
+
+    <input ref="avatarInput" class="hidden-file-input" type="file" accept="image/*" @change="handleAvatarSelect" />
+
+    <div v-if="showAvatarDialog" class="avatar-dialog-backdrop" @click.self="closeAvatarDialog">
+      <section class="avatar-dialog">
+        <header class="avatar-dialog-head">
+          <div>
+            <h3>更新头像</h3>
+            <p>点击下方按钮选择图片，上传后再保存资料。</p>
+          </div>
+          <button type="button" class="secondary-btn compact icon-only-btn" @click="closeAvatarDialog">
+            <SvgIcon name="close" />
+          </button>
+        </header>
+
+        <div class="avatar-dialog-body">
+          <AvatarFrame :src="profileForm.avatarUrl" :name="avatarInitials" size="hero" />
+          <button type="button" class="avatar-upload-button" @click="avatarInput?.click()">
+            <span class="avatar-upload-icon"><SvgIcon name="image" /></span>
+            <span>
+              选择头像图片
+              <small>支持 JPG / PNG，上传后再保存资料</small>
+            </span>
+          </button>
+        </div>
+      </section>
+    </div>
   </section>
 </template>
 
@@ -139,10 +160,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getMe, sendCaptcha, updateEmail, updateProfile } from '../api/auth'
 import { uploadImage } from '../api/file'
+import AvatarFrame from '../components/AvatarFrame.vue'
+import SvgIcon from '../components/SvgIcon.vue'
 
 const currentEmail = ref('')
 const currentUserId = ref(0)
 const avatarInput = ref<HTMLInputElement | null>(null)
+const showAvatarDialog = ref(false)
 
 const profileForm = reactive({
   nickname: '',
@@ -197,6 +221,14 @@ function applyProfile(data: {
   profileForm.phone = data.phone || ''
 }
 
+function openAvatarDialog() {
+  showAvatarDialog.value = true
+}
+
+function closeAvatarDialog() {
+  showAvatarDialog.value = false
+}
+
 async function handleAvatarSelect(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -206,6 +238,7 @@ async function handleAvatarSelect(event: Event) {
     const result = await uploadImage(file, 'avatar')
     profileForm.avatarUrl = result.fileUrl
     successMessage.value = '头像已上传，保存资料后即可生效'
+    showAvatarDialog.value = false
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '头像上传失败'
   } finally {
@@ -319,17 +352,18 @@ async function handleVerifyAndUpdateEmail() {
   height: calc(100vh - 32px);
   min-height: calc(100vh - 32px);
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: var(--shadow);
+  border: 1px solid rgba(85, 131, 255, 0.18);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(79, 140, 255, 0.18), transparent 32%),
+    linear-gradient(135deg, #f8fbff 0%, #eef5ff 45%, #ffffff 100%);
+  box-shadow: 0 24px 70px rgba(37, 87, 197, 0.12);
   flex-direction: column;
 }
 
 .profile-topbar,
 .profile-top-actions,
-.section-title-row,
-.avatar-upload {
+.section-title-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -343,8 +377,9 @@ async function handleVerifyAndUpdateEmail() {
 .profile-topbar {
   min-height: 86px;
   padding: 18px 22px;
-  border-bottom: 1px solid var(--line);
-  background: #fff;
+  border-bottom: 1px solid rgba(85, 131, 255, 0.16);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
 }
 
 .profile-topbar h2,
@@ -379,9 +414,12 @@ async function handleVerifyAndUpdateEmail() {
 
 .profile-preview-panel,
 .profile-section {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #fff;
+  border: 1px solid rgba(85, 131, 255, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 44px rgba(37, 87, 197, 0.08);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+  animation: profile-rise-in 0.48s ease both;
 }
 
 .profile-preview-panel {
@@ -393,6 +431,15 @@ async function handleVerifyAndUpdateEmail() {
   flex-direction: column;
   gap: 18px;
   overflow: auto;
+  animation-delay: 0.03s;
+}
+
+.profile-preview-panel:hover,
+.profile-section:hover {
+  transform: translateY(-2px);
+  border-color: rgba(85, 131, 255, 0.24);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 56px rgba(37, 87, 197, 0.12);
 }
 
 .profile-preview-main {
@@ -416,9 +463,17 @@ async function handleVerifyAndUpdateEmail() {
   display: grid;
   gap: 4px;
   padding: 12px;
-  border-radius: 12px;
-  background: var(--surface-soft);
+  border: 1px solid rgba(85, 131, 255, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f7fbff, #eef5ff);
   text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.profile-meta-list div:hover {
+  transform: translateY(-2px);
+  border-color: rgba(85, 131, 255, 0.22);
+  box-shadow: 0 16px 32px rgba(37, 87, 197, 0.1);
 }
 
 .profile-meta-list dt,
@@ -452,12 +507,19 @@ async function handleVerifyAndUpdateEmail() {
   overflow: auto;
 }
 
+.profile-basic-section {
+  animation-delay: 0.08s;
+}
+
+.account-section {
+  animation-delay: 0.13s;
+}
+
 .profile-field-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.signature-field,
-.avatar-field {
+.signature-field {
   grid-column: 1 / -1;
 }
 
@@ -469,6 +531,13 @@ async function handleVerifyAndUpdateEmail() {
   border: 1px solid var(--line-strong);
   border-radius: 12px;
   background: var(--surface-soft);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.email-display:hover {
+  transform: translateY(-1px);
+  border-color: rgba(85, 131, 255, 0.2);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
 }
 
 .email-display span {
@@ -499,15 +568,54 @@ async function handleVerifyAndUpdateEmail() {
   overflow: hidden;
   border-radius: 50%;
   place-items: center;
-  background: var(--primary);
+  background: linear-gradient(135deg, #2563ff, #63b3ff);
   color: #fff;
   font-weight: 900;
+  box-shadow: 0 16px 36px rgba(37, 99, 255, 0.28);
 }
 
 .hero-avatar {
   width: 128px;
   height: 128px;
   font-size: 34px;
+  border: 8px solid #fff;
+}
+
+.hero-avatar-button {
+  position: relative;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.22s ease, filter 0.22s ease;
+}
+
+.hero-avatar-button:hover {
+  transform: translateY(-3px) scale(1.015);
+  filter: saturate(1.04);
+}
+
+.hero-avatar-hint {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: #172033;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 12px;
+  white-space: nowrap;
+  opacity: 0.92;
+  transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hero-avatar-button:hover .hero-avatar-hint {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.18);
 }
 
 .avatar-preview img {
@@ -516,8 +624,124 @@ async function handleVerifyAndUpdateEmail() {
   object-fit: cover;
 }
 
-.avatar-actions input {
-  max-width: 100%;
+.hidden-file-input {
+  display: none;
+}
+
+.avatar-upload-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(85, 131, 255, 0.22);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f7fbff, #edf5ff);
+  color: #1f4fc4;
+  cursor: pointer;
+  padding: 14px;
+  text-align: left;
+  font-weight: 900;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.avatar-upload-button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(85, 131, 255, 0.3);
+  box-shadow: 0 18px 34px rgba(37, 87, 197, 0.12);
+}
+
+.avatar-upload-button small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.avatar-upload-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  background: #fff;
+  color: #2563ff;
+  place-items: center;
+  box-shadow: 0 12px 26px rgba(37, 99, 255, 0.14);
+}
+
+.avatar-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(8px);
+  padding: 20px;
+}
+
+.avatar-dialog {
+  display: grid;
+  gap: 18px;
+  width: min(460px, 96vw);
+  border: 1px solid rgba(85, 131, 255, 0.16);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 70px rgba(37, 87, 197, 0.16);
+  padding: 22px;
+  animation: profile-dialog-in 0.24s ease both;
+}
+
+.avatar-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.avatar-dialog-head h3,
+.avatar-dialog-head p {
+  margin: 0;
+}
+
+.avatar-dialog-head p {
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.avatar-dialog-body {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+}
+
+.dialog-avatar {
+  width: 120px;
+  height: 120px;
+  font-size: 30px;
+}
+
+@keyframes profile-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes profile-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -536,8 +760,7 @@ async function handleVerifyAndUpdateEmail() {
 @media (max-width: 720px) {
   .profile-topbar,
   .profile-top-actions,
-  .section-title-row,
-  .avatar-upload {
+  .section-title-row {
     align-items: stretch;
     flex-direction: column;
   }

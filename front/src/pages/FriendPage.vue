@@ -15,9 +15,12 @@
             <option value="invisible">隐身</option>
           </select>
         </label>
-        <button class="secondary-btn compact" :disabled="loading" @click="loadAll">刷新</button>
-        <button class="primary-btn compact request-entry" type="button" @click="showFriendTools = true">
-          添加/请求
+        <button class="secondary-btn compact icon-only-btn" :disabled="loading" title="刷新" @click="loadAll">
+          <SvgIcon name="refresh" />
+        </button>
+        <button class="primary-btn compact request-entry icon-text-btn" type="button" @click="showFriendTools = true">
+          <SvgIcon name="plus" />
+          <span>添加/请求</span>
           <span v-if="receivedRequests.length" class="request-dot">{{ receivedRequests.length }}</span>
         </button>
       </div>
@@ -38,20 +41,17 @@
         <div v-else-if="!friends.length" class="empty-state large">暂无好友</div>
         <div v-else class="friend-grid">
           <article v-for="friend in sortedFriends" :key="friend.userId" class="friend-item">
-            <span class="avatar large">
-              <img v-if="friend.avatarUrl" :src="friend.avatarUrl" alt="" />
-              <span v-else>{{ initials(displayName(friend)) }}</span>
-            </span>
+            <AvatarFrame :src="friend.avatarUrl" :name="displayName(friend)" size="lg" />
             <div class="friend-info">
               <h3>{{ displayName(friend) }}</h3>
               <p>{{ friend.email }}</p>
               <small>{{ friend.friendGroup || '默认分组' }} {{ friend.star ? '| 星标' : '' }}</small>
             </div>
             <div class="friend-actions">
-              <button @click="editFriend(friend)">编辑</button>
-              <button @click="toggleStar(friend)">{{ friend.star ? '取消星标' : '星标' }}</button>
-              <button @click="blockFriend(friend)">拉黑</button>
-              <button class="danger" @click="removeFriend(friend)">删除</button>
+              <button title="编辑" @click="editFriend(friend)"><SvgIcon name="edit" /><span>编辑</span></button>
+              <button title="星标" @click="toggleStar(friend)"><SvgIcon name="star" /><span>{{ friend.star ? '取消星标' : '星标' }}</span></button>
+              <button title="拉黑" @click="blockFriend(friend)"><SvgIcon name="block" /><span>拉黑</span></button>
+              <button class="danger" title="删除" @click="removeFriend(friend)"><SvgIcon name="trash" /><span>删除</span></button>
             </div>
           </article>
         </div>
@@ -81,15 +81,38 @@
             <h2>添加好友与请求</h2>
             <p>搜索陌生人、加入群组、处理好友请求</p>
           </div>
-          <button class="secondary-btn compact" type="button" @click="showFriendTools = false">关闭</button>
+          <button class="secondary-btn compact icon-only-btn" type="button" title="关闭" @click="showFriendTools = false">
+            <SvgIcon name="close" />
+          </button>
         </header>
 
-        <section class="friend-card">
+        <div class="friend-tool-switch" aria-label="好友工具">
+          <button
+            :class="{ active: friendToolMode === 'search' }"
+            type="button"
+            aria-label="寻找好友"
+            @click="friendToolMode = 'search'"
+          >
+            <SvgIcon name="search" />
+            <span class="tool-tip">寻找好友</span>
+          </button>
+          <button
+            :class="{ active: friendToolMode === 'recommend' }"
+            type="button"
+            aria-label="推荐好友"
+            @click="friendToolMode = 'recommend'"
+          >
+            <SvgIcon name="star" />
+            <span class="tool-tip">推荐好友</span>
+          </button>
+        </div>
+
+        <section v-if="friendToolMode === 'search'" class="friend-card friend-tool-panel">
           <h3>搜索好友/群组</h3>
           <div class="search-row">
             <input v-model="keyword" type="search" placeholder="搜索用户或群组" @keyup.enter="handleSearch" />
-            <button class="secondary-btn compact" :disabled="searching" @click="handleSearch">
-              {{ searching ? '...' : '搜索' }}
+            <button class="secondary-btn compact icon-only-btn" :disabled="searching" title="搜索" @click="handleSearch">
+              <SvgIcon name="search" />
             </button>
           </div>
           <div v-if="searchHistory.length" class="history-list">
@@ -99,10 +122,7 @@
           </div>
           <div v-if="searchResults.length" class="user-list">
             <button v-for="user in searchResults" :key="user.userId" type="button" @click="requestFriend(user)">
-              <span class="avatar">
-                <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" />
-                <span v-else>{{ initials(user.nickname || user.email) }}</span>
-              </span>
+              <AvatarFrame :src="user.avatarUrl" :name="user.nickname || user.email" size="md" />
               <span>
                 <strong>{{ user.nickname || user.email }}</strong>
                 <small>{{ user.email }}</small>
@@ -118,14 +138,11 @@
           </div>
         </section>
 
-        <section class="friend-card">
+        <section v-else class="friend-card friend-tool-panel">
           <h3>推荐</h3>
           <div v-if="recommendedFriends.length" class="user-list">
             <button v-for="user in recommendedFriends" :key="user.userId" type="button" @click="requestFriend(user)">
-              <span class="avatar">
-                <img v-if="user.avatarUrl" :src="user.avatarUrl" alt="" />
-                <span v-else>{{ initials(user.nickname || user.email) }}</span>
-              </span>
+              <AvatarFrame :src="user.avatarUrl" :name="user.nickname || user.email" size="md" />
               <span>
                 <strong>{{ user.nickname || user.email }}</strong>
                 <small>{{ user.email }}</small>
@@ -203,6 +220,9 @@ import {
   type SearchHistory,
   type TopicRecommendation,
 } from '../api/social'
+import AvatarFrame from '../components/AvatarFrame.vue'
+import SvgIcon from '../components/SvgIcon.vue'
+import { resolveAssetUrl } from '../utils/assets'
 
 const friends = ref<Friend[]>([])
 const receivedRequests = ref<FriendRequest[]>([])
@@ -222,6 +242,7 @@ const loading = ref(false)
 const searching = ref(false)
 const currentUserId = ref(0)
 const showFriendTools = ref(false)
+const friendToolMode = ref<'search' | 'recommend'>('search')
 
 const sortedFriends = computed(() => [...friends.value].sort((left, right) => right.star - left.star))
 
@@ -496,11 +517,18 @@ small,
 
 .friend-panel {
   min-height: 0;
-  border: 1px solid #d8e0ea;
+  border: 1px solid rgba(85, 131, 255, 0.14);
   border-radius: 14px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(18px);
   padding: 16px;
   overflow: auto;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.friend-panel:hover {
+  border-color: rgba(85, 131, 255, 0.22);
+  box-shadow: 0 18px 40px rgba(37, 87, 197, 0.08);
 }
 
 .contacts-panel {
@@ -512,6 +540,68 @@ small,
 .friend-card {
   display: grid;
   gap: 10px;
+}
+
+.friend-tool-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.friend-tool-switch button {
+  position: relative;
+  display: grid;
+  min-height: 82px;
+  border: 1px solid rgba(85, 131, 255, 0.18);
+  border-radius: 24px;
+  background: #fff;
+  color: #2f7eff;
+  place-items: center;
+  box-shadow: 0 14px 34px rgba(37, 87, 197, 0.08);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.friend-tool-switch button:hover,
+.friend-tool-switch button.active {
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+  box-shadow: 0 18px 42px rgba(37, 99, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.friend-tool-switch :deep(.ui-icon) {
+  width: 30px;
+  height: 30px;
+}
+
+.tool-tip {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  border-radius: 999px;
+  background: #172033;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0;
+  padding: 5px 9px;
+  pointer-events: none;
+  transform: translate(-50%, 6px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  white-space: nowrap;
+}
+
+.friend-tool-switch button:hover .tool-tip,
+.friend-tool-switch button:focus-visible .tool-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.friend-tool-panel {
+  border: 1px solid rgba(85, 131, 255, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 14px;
+  box-shadow: 0 14px 34px rgba(37, 87, 197, 0.06);
 }
 
 .user-list,
@@ -537,10 +627,11 @@ small,
 .request-list article,
 .blocked-list article,
 .friend-item {
-  border: 1px solid #d8e0ea;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid rgba(85, 131, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
   padding: 12px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .user-list button {
@@ -548,6 +639,16 @@ small,
   gap: 10px;
   text-align: left;
   cursor: pointer;
+}
+
+.user-list button:hover,
+.request-list article:hover,
+.blocked-list article:hover,
+.friend-item:hover {
+  border-color: rgba(85, 131, 255, 0.24);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 34px rgba(37, 87, 197, 0.1);
+  transform: translateY(-2px);
 }
 
 .friend-item {
@@ -575,12 +676,22 @@ small,
 }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 0;
   border-radius: 10px;
   background: #e9eef6;
   color: #2457c5;
   cursor: pointer;
   padding: 8px 10px;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(37, 87, 197, 0.12);
 }
 
 button.danger,
@@ -650,7 +761,8 @@ button.danger,
   gap: 16px;
   overflow: auto;
   padding: 18px;
-  background: #f7f9fc;
+  background: linear-gradient(180deg, rgba(251, 253, 255, 0.96), rgba(241, 247, 255, 0.94));
+  backdrop-filter: blur(22px);
   box-shadow: -18px 0 48px rgba(15, 23, 42, 0.14);
 }
 
