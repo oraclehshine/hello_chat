@@ -157,6 +157,47 @@ backend/src/main/resources/db/migration
 
 这样局域网设备访问 `http://192.168.x.x:3000` 时，请求会由 Vite 转发到本机后端，避免其他设备把 `localhost` 解析成自身导致 Network error。
 
+## 移动端实现摘要
+
+移动端位于 `mobile/app`，采用 Flutter 实现，当前已与后端 `:8083` 接口打通，并具备核心业务闭环。
+
+- 认证：登录、注册、找回密码
+- 消息：会话列表、单聊详情、文本消息发送
+- 好友：好友列表、搜索用户、发送申请、收发申请处理
+- 群聊：我的群聊、群详情、创建群聊、邀请码入群、搜索群、入群申请
+- 朋友圈：动态列表、发布、点赞、收藏、评论、互动通知
+- 我的：资料查询、资料编辑、退出登录
+- 全局会话：Token 过期自动退出并回到登录页
+
+主要目录：
+
+```text
+mobile/
+├── flutter-env.ps1            # PowerShell 环境加载脚本
+├── flutter-env.cmd            # CMD 环境加载脚本
+└── app/                       # Flutter 工程
+    ├── lib/app/               # App 入口、主题、导航
+    ├── lib/core/              # 网络、模型、存储、服务
+    ├── lib/features/          # 认证/消息/好友/群聊/朋友圈/我的
+    └── MOBILE_QA_CHECKLIST.md # 联调与验收清单
+```
+
+移动端本地启动：
+
+```powershell
+cd mobile
+.\flutter-env.ps1
+cd app
+flutter pub get
+flutter run
+```
+
+联调前建议先启动后端（`8083`），并按以下清单回归主流程：
+
+```text
+mobile/app/MOBILE_QA_CHECKLIST.md
+```
+
 ## 后端实现摘要
 
 后端位于 `backend`，采用 Spring Boot 分层架构。
@@ -416,7 +457,7 @@ mvn -s .mvn-local-settings.xml "-Dmaven.repo.local=.m2repo" compile
 
 ## 后续展望
 
-- 启动 Flutter 移动端工程，实现与 Web 端一致的移动体验。
+- 持续优化 Flutter 移动端体验（实时消息、上传交互、页面动效与性能）。
 - 增加更完整的消息 ACK、离线消息和多端同步机制。
 - 增加接口限流、审计日志、敏感词过滤和内容审核能力。
 - 优化移动端适配、图片预览、消息虚拟列表和暗色模式。
