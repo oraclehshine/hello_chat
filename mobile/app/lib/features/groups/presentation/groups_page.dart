@@ -136,7 +136,7 @@ class _GroupsPageState extends State<GroupsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Create Group',
+                      '创建群聊',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -146,20 +146,18 @@ class _GroupsPageState extends State<GroupsPage> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(hintText: 'Group name'),
+                      decoration: const InputDecoration(hintText: '群名称'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: descController,
                       minLines: 2,
                       maxLines: 4,
-                      decoration: const InputDecoration(
-                        hintText: 'Description (optional)',
-                      ),
+                      decoration: const InputDecoration(hintText: '群描述（可选）'),
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Select members (at least 1 friend)',
+                      '选择群成员（至少 1 位好友）',
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary,
@@ -169,7 +167,7 @@ class _GroupsPageState extends State<GroupsPage> {
                     if (friends.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Text('No friends yet. Add a friend first.'),
+                        child: Text('还没有好友，请先添加好友。'),
                       )
                     else
                       ConstrainedBox(
@@ -208,7 +206,7 @@ class _GroupsPageState extends State<GroupsPage> {
                         const Spacer(),
                         TextButton(
                           onPressed: () => navigator.pop(),
-                          child: const Text('Cancel'),
+                          child: const Text('取消'),
                         ),
                         const SizedBox(width: 8),
                         FilledButton(
@@ -220,17 +218,13 @@ class _GroupsPageState extends State<GroupsPage> {
                             final groupName = nameController.text.trim();
                             if (groupName.isEmpty) {
                               messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter group name'),
-                                ),
+                                const SnackBar(content: Text('请输入群名称')),
                               );
                               return;
                             }
                             if (selectedMemberIds.isEmpty) {
                               messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Select at least one friend'),
-                                ),
+                                const SnackBar(content: Text('请至少选择 1 位好友')),
                               );
                               return;
                             }
@@ -243,7 +237,7 @@ class _GroupsPageState extends State<GroupsPage> {
                               navigator.pop();
                               if (!mounted) return;
                               rootMessenger.showSnackBar(
-                                const SnackBar(content: Text('Group created')),
+                                const SnackBar(content: Text('群聊创建成功')),
                               );
                               await _reload();
                             } on ApiException catch (error) {
@@ -252,7 +246,7 @@ class _GroupsPageState extends State<GroupsPage> {
                               );
                             }
                           },
-                          child: const Text('Create'),
+                          child: const Text('创建'),
                         ),
                       ],
                     ),
@@ -288,7 +282,7 @@ class _GroupsPageState extends State<GroupsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Join by Invite Code',
+                  '邀请码入群',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -298,7 +292,7 @@ class _GroupsPageState extends State<GroupsPage> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: inviteController,
-                  decoration: const InputDecoration(hintText: 'Invite code'),
+                  decoration: const InputDecoration(hintText: '输入邀请码'),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -306,7 +300,7 @@ class _GroupsPageState extends State<GroupsPage> {
                     const Spacer(),
                     TextButton(
                       onPressed: () => navigator.pop(),
-                      child: const Text('Cancel'),
+                      child: const Text('取消'),
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
@@ -320,7 +314,7 @@ class _GroupsPageState extends State<GroupsPage> {
                           navigator.pop();
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Joined group')),
+                            const SnackBar(content: Text('已加入群聊')),
                           );
                           await _reload();
                         } on ApiException catch (error) {
@@ -329,7 +323,7 @@ class _GroupsPageState extends State<GroupsPage> {
                           );
                         }
                       },
-                      child: const Text('Join'),
+                      child: const Text('加入'),
                     ),
                   ],
                 ),
@@ -345,7 +339,7 @@ class _GroupsPageState extends State<GroupsPage> {
     final remark = item.remarkName?.trim();
     if (remark != null && remark.isNotEmpty) return remark;
     if (item.nickname.trim().isNotEmpty) return item.nickname.trim();
-    return 'User ${item.userId}';
+    return '用户 ${item.userId}';
   }
 
   Future<void> _openGroup(GroupSummary group) async {
@@ -367,7 +361,7 @@ class _GroupsPageState extends State<GroupsPage> {
       subtitle: Text(
         item.description?.trim().isNotEmpty == true
             ? item.description!.trim()
-            : 'No description',
+            : '暂无群描述',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -386,18 +380,15 @@ class _GroupsPageState extends State<GroupsPage> {
           padding: const EdgeInsets.fromLTRB(20, 84, 20, 120),
           children: [
             SectionHeader(
-              title: 'Groups',
+              title: '群聊',
               action: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextButton(
-                    onPressed: _createGroup,
-                    child: const Text('Create'),
-                  ),
+                  TextButton(onPressed: _createGroup, child: const Text('创建')),
                   const SizedBox(width: 6),
                   TextButton(
                     onPressed: _joinByInviteCode,
-                    child: const Text('Join'),
+                    child: const Text('加入'),
                   ),
                 ],
               ),
@@ -410,7 +401,7 @@ class _GroupsPageState extends State<GroupsPage> {
                     child: TextField(
                       controller: _searchController,
                       decoration: const InputDecoration(
-                        hintText: 'Search public groups',
+                        hintText: '搜索公开群聊',
                         border: InputBorder.none,
                       ),
                     ),
@@ -431,7 +422,7 @@ class _GroupsPageState extends State<GroupsPage> {
             if (_searchResults.isNotEmpty) ...[
               const SizedBox(height: 14),
               const Text(
-                'Discover',
+                '发现群聊',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   color: AppTheme.textPrimary,
@@ -453,7 +444,7 @@ class _GroupsPageState extends State<GroupsPage> {
             ],
             const SizedBox(height: 14),
             const Text(
-              'My Groups',
+              '我的群聊',
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 color: AppTheme.textPrimary,
@@ -471,12 +462,12 @@ class _GroupsPageState extends State<GroupsPage> {
                 if (snapshot.hasError) {
                   final message = snapshot.error is ApiException
                       ? (snapshot.error as ApiException).message
-                      : 'Failed to load groups';
+                      : '加载群聊失败';
                   return GlassCard(child: Text(message));
                 }
                 final items = snapshot.data ?? const <GroupSummary>[];
                 if (items.isEmpty) {
-                  return const GlassCard(child: Text('No joined groups yet.'));
+                  return const GlassCard(child: Text('你还没有加入任何群聊。'));
                 }
                 return GlassCard(
                   child: Column(

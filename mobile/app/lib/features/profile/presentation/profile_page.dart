@@ -5,7 +5,9 @@ import 'package:app/core/network/api_exception.dart';
 import 'package:app/shared/widgets/app_avatar.dart';
 import 'package:app/shared/widgets/glass_card.dart';
 import 'package:app/shared/widgets/section_header.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.onLogout});
@@ -18,6 +20,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late Future<UserProfile> _future;
+  bool _updatingAvatar = false;
 
   @override
   void didChangeDependencies() {
@@ -59,10 +62,56 @@ class _ProfilePageState extends State<ProfilePage> {
                 GlassCard(
                   child: Column(
                     children: [
-                      AppAvatar(
-                        label: profile.nickname,
-                        size: 78,
-                        imageUrl: profile.avatarUrl,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          AppAvatar(
+                            label: profile.nickname,
+                            size: 78,
+                            imageUrl: profile.avatarUrl,
+                          ),
+                          Positioned(
+                            right: -2,
+                            bottom: -2,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(999),
+                                onTap: _updatingAvatar
+                                    ? null
+                                    : () => _changeAvatar(profile),
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryBlue,
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: _updatingAvatar
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(7),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.camera_alt_rounded,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 14),
                       Text(
@@ -228,6 +277,73 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       },
     );
+  }
+
+  Future<void> _changeAvatar(UserProfile profile) async {
+    final hasPermission = await _requestMediaPermission();
+    if (!hasPermission) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('未授予相册权限，无法更换头像')));
+      return;
+    }
+
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    final file = (picked == null || picked.files.isEmpty)
+        ? null
+        : picked.files.first;
+    if (file == null || file.path == null) {
+      return;
+    }
+
+    setState(() {
+      _updatingAvatar = true;
+    });
+
+    try {
+      final scope = AppScope.of(context);
+      final upload = await scope.fileService.uploadFile(
+        filePath: file.path!,
+        fileName: file.name,
+        scene: 'avatar',
+      );
+      await scope.authService.updateProfile(avatarUrl: upload.fileUrl);
+      if (!mounted) return;
+      await _reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('头像已更新')));
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('头像更新失败，请稍后重试')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _updatingAvatar = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _requestMediaPermission() async {
+    final photos = await Permission.photos.request();
+    if (photos.isGranted || photos.isLimited) {
+      return true;
+    }
+    final storage = await Permission.storage.request();
+    return storage.isGranted;
   }
 }
 

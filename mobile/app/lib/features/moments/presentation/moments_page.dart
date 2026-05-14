@@ -248,8 +248,8 @@ class _MomentsPageState extends State<MomentsPage> {
                                         borderRadius: BorderRadius.circular(12),
                                         child: Image.network(
                                           resolveAssetUrl(m.fileUrl),
-                                          width: 90,
-                                          height: 90,
+                                          width: 128,
+                                          height: 128,
                                           fit: BoxFit.cover,
                                         ),
                                       ),
@@ -335,7 +335,7 @@ class _MomentsPageState extends State<MomentsPage> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: comments.length,
-                    separatorBuilder: (_, index) => const Divider(height: 14),
+                    separatorBuilder: (context, _) => const Divider(height: 14),
                     itemBuilder: (context, index) {
                       final c = comments[index];
                       return Text('${c.userNickname}: ${c.content}');
@@ -576,7 +576,7 @@ class _MomentsPageState extends State<MomentsPage> {
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: items.length + 1,
-                          separatorBuilder: (_, index) =>
+                          separatorBuilder: (context, _) =>
                               const Divider(height: 16),
                           itemBuilder: (context, index) {
                             if (index == items.length) {
@@ -731,7 +731,7 @@ class _MomentsPageState extends State<MomentsPage> {
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: items.length + 1,
-                          separatorBuilder: (_, index) =>
+                          separatorBuilder: (context, _) =>
                               const Divider(height: 16),
                           itemBuilder: (context, index) {
                             if (index == items.length) {

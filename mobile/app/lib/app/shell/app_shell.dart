@@ -1,4 +1,4 @@
-﻿import 'package:app/app/app_scope.dart';
+import 'package:app/app/app_scope.dart';
 import 'package:app/app/theme/app_theme.dart';
 import 'package:app/core/models/chat_summary.dart';
 import 'package:app/features/chat/presentation/chat_detail_page.dart';
@@ -29,9 +29,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _openChat(ChatSummary chat) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => ChatDetailPage(chat: chat)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => ChatDetailPage(chat: chat)));
   }
 
   @override
@@ -88,12 +88,12 @@ class _AppShellState extends State<AppShell> {
                 child: IgnorePointer(
                   child: Row(
                     children: [
-                      BrandMark(size: 40),
+                      BrandMark(size: 32),
                       SizedBox(width: 12),
                       Text(
                         'Hello Chat',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.textPrimary,
                         ),
@@ -123,38 +123,40 @@ class _AppShellState extends State<AppShell> {
           ),
           child: NavigationBar(
             selectedIndex: _currentIndex,
+            height: 62,
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             indicatorColor: AppTheme.primaryBlue.withValues(alpha: 0.16),
             labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
             destinations: const [
               NavigationDestination(
-                icon: Icon(Icons.chat_bubble_outline_rounded),
-                selectedIcon: Icon(Icons.chat_bubble_rounded),
+                icon: Icon(Icons.chat_bubble_outline_rounded, size: 21),
+                selectedIcon: Icon(Icons.chat_bubble_rounded, size: 21),
                 label: '消息',
               ),
               NavigationDestination(
-                icon: Icon(Icons.people_outline_rounded),
-                selectedIcon: Icon(Icons.people_rounded),
+                icon: Icon(Icons.people_outline_rounded, size: 21),
+                selectedIcon: Icon(Icons.people_rounded, size: 21),
                 label: '好友',
               ),
               NavigationDestination(
-                icon: Icon(Icons.forum_outlined),
-                selectedIcon: Icon(Icons.forum_rounded),
+                icon: Icon(Icons.forum_outlined, size: 21),
+                selectedIcon: Icon(Icons.forum_rounded, size: 21),
                 label: '群聊',
               ),
               NavigationDestination(
-                icon: Icon(Icons.auto_awesome_mosaic_outlined),
-                selectedIcon: Icon(Icons.auto_awesome_mosaic_rounded),
+                icon: Icon(Icons.auto_awesome_mosaic_outlined, size: 21),
+                selectedIcon: Icon(Icons.auto_awesome_mosaic_rounded, size: 21),
                 label: '朋友圈',
               ),
               NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(Icons.person_rounded),
+                icon: Icon(Icons.person_outline_rounded, size: 21),
+                selectedIcon: Icon(Icons.person_rounded, size: 21),
                 label: '我的',
               ),
             ],
-            onDestinationSelected: (index) => setState(() => _currentIndex = index),
+            onDestinationSelected: (index) =>
+                setState(() => _currentIndex = index),
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:app/app/theme/app_theme.dart';
+import 'package:app/core/utils/asset_urls.dart';
 import 'package:flutter/material.dart';
 
 class AppAvatar extends StatelessWidget {
@@ -16,8 +17,10 @@ class AppAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initials = label.trim().isEmpty ? 'HC' : label.trim().substring(0, 1);
+    final rawUrl = imageUrl?.trim() ?? '';
+    final resolvedUrl = _resolveAvatarUrl(rawUrl);
 
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+    if (resolvedUrl.isNotEmpty) {
       return Container(
         width: size,
         height: size,
@@ -28,7 +31,7 @@ class AppAvatar extends StatelessWidget {
           border: Border.all(color: AppTheme.border),
         ),
         child: Image.network(
-          imageUrl!,
+          resolvedUrl,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) =>
               _Fallback(initials: initials, size: size),
@@ -37,6 +40,16 @@ class AppAvatar extends StatelessWidget {
     }
 
     return _Fallback(initials: initials, size: size);
+  }
+
+  String _resolveAvatarUrl(String url) {
+    if (url.isEmpty) {
+      return '';
+    }
+    if (url.contains('/files/redirect?source=')) {
+      return url;
+    }
+    return resolveAssetUrl(url);
   }
 }
 
@@ -55,10 +68,7 @@ class _Fallback extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * 0.38),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF67A5FF),
-            AppTheme.primaryBlue,
-          ],
+          colors: [Color(0xFF67A5FF), AppTheme.primaryBlue],
         ),
       ),
       child: Text(

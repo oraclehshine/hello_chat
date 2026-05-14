@@ -77,10 +77,9 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 Expanded(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
+                  child: Center(
                     child: Container(
                       width: double.infinity,
                       constraints: const BoxConstraints(maxWidth: 440),
@@ -150,7 +149,7 @@ class _AuthPageState extends State<AuthPage> {
                                     child: TextField(
                                       controller: _captchaController,
                                       decoration: const InputDecoration(
-                                        hintText: '验证码',
+                                        hintText: '输入邮箱验证码',
                                         prefixIcon: Icon(
                                           Icons.mark_email_read_outlined,
                                         ),
