@@ -247,7 +247,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 
   Future<void> _locateMessageFromSearch(ChatMessage target) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = ScaffoldMessenger.maybeOf(context);
     final targetId = target.messageId;
     var exists = _messages.any((item) => item.messageId == targetId);
     if (!exists) {
@@ -255,7 +255,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (!mounted) return;
       exists = _messages.any((item) => item.messageId == targetId);
       if (!exists) {
-        messenger.showSnackBar(const SnackBar(content: Text('该消息不在当前已加载列表中。')));
+        messenger?.showSnackBar(
+          const SnackBar(content: Text('该消息不在当前已加载列表中。')),
+        );
         return;
       }
     }
@@ -263,10 +265,19 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _highlightMessageId = targetId;
     });
     await Future<void>.delayed(const Duration(milliseconds: 40));
+    if (!mounted) return;
     final key = _messageKeys[targetId];
     final targetContext = key?.currentContext;
     if (targetContext == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('定位失败，请下拉刷新后重试。')));
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('定位失败，请下拉刷新后重试。')),
+      );
+      return;
+    }
+    if (!targetContext.mounted) {
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('目标消息视图尚未准备好，请稍后重试。')),
+      );
       return;
     }
     await Scrollable.ensureVisible(
@@ -715,7 +726,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           child: ListView.separated(
                             shrinkWrap: true,
                             itemCount: items.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (context, _) =>
                                 const Divider(height: 16),
                             itemBuilder: (context, index) {
                               final msg = items[index];

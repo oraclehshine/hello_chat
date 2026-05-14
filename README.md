@@ -34,7 +34,10 @@ code/
 ├── mobile/                   # Flutter 移动端目录与 UI 参考稿
 ├── scripts/                  # 启动与自动化测试脚本
 ├── docker-compose.yml         # PostgreSQL、Redis、Kafka、前后端容器编排
+├── docker-compose.prod.yml    # Docker Hub 镜像拉取式生产部署编排
 ├── .env.example               # 环境变量模板
+├── .env.prod.example          # 服务器生产环境变量模板
+├── 服务器部署文档.md          # 服务器部署与移动端发布说明
 └── README.md
 ```
 

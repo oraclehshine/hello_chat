@@ -6,6 +6,16 @@ class AppEnvironment {
     defaultValue: 'dev',
   );
 
+  static const String apiScheme = String.fromEnvironment(
+    'API_SCHEME',
+    defaultValue: '',
+  );
+
+  static const String apiWsScheme = String.fromEnvironment(
+    'API_WS_SCHEME',
+    defaultValue: '',
+  );
+
   static const String apiHost = String.fromEnvironment(
     'API_HOST',
     defaultValue: '',
@@ -18,6 +28,20 @@ class AppEnvironment {
 
   static bool get isProd => mode == 'prod';
 
+  static String get resolvedApiScheme {
+    if (apiScheme.isNotEmpty) {
+      return apiScheme;
+    }
+    return isProd ? 'https' : 'http';
+  }
+
+  static String get resolvedWsScheme {
+    if (apiWsScheme.isNotEmpty) {
+      return apiWsScheme;
+    }
+    return isProd ? 'wss' : 'ws';
+  }
+
   static String get defaultHost {
     if (apiHost.isNotEmpty) {
       return apiHost;
@@ -28,7 +52,11 @@ class AppEnvironment {
     return 'localhost';
   }
 
-  static String get baseUrl => 'http://$defaultHost:$apiPort/api/v1';
+  static String get portSegment => apiPort.isEmpty ? '' : ':$apiPort';
 
-  static String get webSocketUrl => 'ws://$defaultHost:$apiPort/ws/chat';
+  static String get baseUrl =>
+      '$resolvedApiScheme://$defaultHost$portSegment/api/v1';
+
+  static String get webSocketUrl =>
+      '$resolvedWsScheme://$defaultHost$portSegment/ws/chat';
 }
