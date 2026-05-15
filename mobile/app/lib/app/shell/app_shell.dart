@@ -1,4 +1,4 @@
-import 'package:app/app/app_scope.dart';
+﻿import 'package:app/app/app_scope.dart';
 import 'package:app/app/theme/app_theme.dart';
 import 'package:app/core/models/chat_summary.dart';
 import 'package:app/features/chat/presentation/chat_detail_page.dart';
@@ -21,17 +21,22 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
+  bool _initialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    AppScope.of(context).chatSocketService.ensureConnected();
+    if (_initialized) return;
+    _initialized = true;
+    final scope = AppScope.of(context);
+    scope.chatSocketService.ensureConnected();
+    scope.notificationService.initialize();
   }
 
   void _openChat(ChatSummary chat) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => ChatDetailPage(chat: chat)));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => ChatDetailPage(chat: chat)),
+    );
   }
 
   @override
@@ -155,8 +160,7 @@ class _AppShellState extends State<AppShell> {
                 label: '我的',
               ),
             ],
-            onDestinationSelected: (index) =>
-                setState(() => _currentIndex = index),
+            onDestinationSelected: (index) => setState(() => _currentIndex = index),
           ),
         ),
       ),

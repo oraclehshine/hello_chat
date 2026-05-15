@@ -1,5 +1,5 @@
 ﻿<template>
-  <section class="group-workspace">
+  <section class="group-workspace liquid-glass">
     <aside class="group-sidebar">
       <header class="group-header">
         <div>
@@ -156,7 +156,7 @@
               </button>
               <div v-if="notifications.length" class="notification-list">
                 <p v-for="item in notifications" :key="item.notificationId">
-                  <strong>{{ item.content }}</strong>
+                  <strong>{{ normalizeDisplayText(item.content) }}</strong>
                   <small>{{ formatTime(item.createdAt) }}</small>
                 </p>
               </div>
@@ -412,7 +412,7 @@
                         </span>
                       </a>
                     </template>
-                    <p v-else>{{ message.content }}</p>
+                    <p v-else>{{ normalizeDisplayText(message.content) }}</p>
                   </template>
                 </div>
                 <footer class="message-meta">
@@ -564,6 +564,8 @@ import { uploadFile, uploadImage } from '../api/file'
 import AvatarFrame from '../components/AvatarFrame.vue'
 import SvgIcon from '../components/SvgIcon.vue'
 import { resolveAssetUrl } from '../utils/assets'
+import { notifyNewMessage } from '../utils/mobileNotify'
+import { normalizeDisplayText } from '../utils/text'
 
 const groups = ref<GroupSummary[]>([])
 const activeGroup = ref<GroupSummary | null>(null)
@@ -747,6 +749,7 @@ function connectSocket() {
 
 async function handleSocketEvent(event: ChatSocketEvent) {
   if (event.eventType === 'group:message:new') {
+    notifyNewMessage('Hello Chat 群聊新消息', '你所在的群聊有一条新消息')
     const message = event.payload as GroupMessage
     if (!activeGroup.value || message.groupId !== activeGroup.value.groupId) return
     if (messageKeyword.value.trim()) return

@@ -1,5 +1,6 @@
-import 'package:app/app/theme/app_theme.dart';
+﻿import 'package:app/app/theme/app_theme.dart';
 import 'package:app/core/utils/asset_urls.dart';
+import 'package:app/core/utils/text_sanitizer.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -22,7 +23,9 @@ class AttachmentMessageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textColor = mine ? Colors.white : AppTheme.textPrimary;
-    final assetUrl = content.isNotEmpty ? resolveAssetUrl(content) : '';
+    final normalizedContent = normalizeDisplayText(content);
+    final normalizedName = normalizeDisplayText(fileName);
+    final assetUrl = normalizedContent.isNotEmpty ? resolveAssetUrl(normalizedContent) : '';
 
     if (messageType == 'image' && assetUrl.isNotEmpty) {
       return GestureDetector(
@@ -44,22 +47,16 @@ class AttachmentMessageBody extends StatelessWidget {
                     height: 220,
                     color: Colors.black12,
                     alignment: Alignment.center,
-                    child: Text(
-                      '图片加载失败',
-                      style: TextStyle(color: textColor),
-                    ),
+                    child: Text('图片加载失败', style: TextStyle(color: textColor)),
                   ),
                 ),
               ),
-              if ((fileName ?? '').isNotEmpty)
+              if (normalizedName.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 10),
                   child: Text(
-                    fileName!,
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    normalizedName,
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
                   ),
                 ),
             ],
@@ -75,50 +72,34 @@ class AttachmentMessageBody extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.insert_drive_file_rounded,
-              color: textColor,
-            ),
+            Icon(Icons.insert_drive_file_rounded, color: textColor),
             const SizedBox(width: 10),
             Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    (fileName ?? '').isNotEmpty ? fileName! : '附件',
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    normalizedName.isNotEmpty ? normalizedName : '附件',
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _formatSize(fileSize),
-                    style: TextStyle(
-                      color: textColor.withValues(alpha: 0.82),
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: textColor.withValues(alpha: 0.82), fontSize: 12),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Icon(
-              Icons.open_in_new_rounded,
-              size: 18,
-              color: textColor.withValues(alpha: 0.86),
-            ),
+            Icon(Icons.open_in_new_rounded, size: 18, color: textColor.withValues(alpha: 0.86)),
           ],
         ),
       );
     }
 
     return Text(
-      content,
-      style: TextStyle(
-        color: textColor,
-        height: 1.45,
-      ),
+      normalizedContent,
+      style: TextStyle(color: textColor, height: 1.45),
     );
   }
 
@@ -136,13 +117,7 @@ class AttachmentMessageBody extends StatelessWidget {
                     child: InteractiveViewer(
                       minScale: 0.8,
                       maxScale: 4,
-                      child: Hero(
-                        tag: imageUrl,
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                      child: Hero(tag: imageUrl, child: Image.network(imageUrl, fit: BoxFit.contain)),
                     ),
                   ),
                   Positioned(

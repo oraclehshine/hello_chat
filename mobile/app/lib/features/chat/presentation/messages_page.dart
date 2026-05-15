@@ -1,9 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:app/app/app_scope.dart';
 import 'package:app/app/theme/app_theme.dart';
 import 'package:app/core/models/chat_summary.dart';
 import 'package:app/core/realtime/chat_socket_service.dart';
+import 'package:app/core/utils/text_sanitizer.dart';
 import 'package:app/shared/widgets/app_avatar.dart';
 import 'package:app/shared/widgets/glass_card.dart';
 import 'package:app/shared/widgets/section_header.dart';
@@ -45,11 +46,20 @@ class _MessagesPageState extends State<MessagesPage> {
 
   void _bindRealtime() {
     _socketSubscription?.cancel();
-    _socketSubscription = AppScope.of(context).chatSocketService.events.listen((
-      event,
-    ) {
+    final scope = AppScope.of(context);
+    _socketSubscription = scope.chatSocketService.events.listen((event) {
       switch (event.eventType) {
         case 'message:new':
+          final currentUserId = scope.sessionStore.session?.userId ?? 0;
+          if (event.userId != currentUserId) {
+            scope.notificationService.notifyIncomingMessage(
+              title: 'Hello Chat 新消息',
+              body: '你收到了一条新的私聊消息',
+              id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            );
+          }
+          _queueReload();
+          break;
         case 'message:update':
         case 'message:read':
           _queueReload();
@@ -78,10 +88,7 @@ class _MessagesPageState extends State<MessagesPage> {
         children: [
           SectionHeader(
             title: '消息',
-            action: IconButton(
-              onPressed: _reload,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
+            action: IconButton(onPressed: _reload, icon: const Icon(Icons.refresh_rounded)),
           ),
           const SizedBox(height: 18),
           const TextField(
@@ -107,16 +114,9 @@ class _MessagesPageState extends State<MessagesPage> {
                 return GlassCard(
                   child: Column(
                     children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Colors.redAccent,
-                        size: 34,
-                      ),
+                      const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 34),
                       const SizedBox(height: 12),
-                      Text(
-                        snapshot.error.toString(),
-                        textAlign: TextAlign.center,
-                      ),
+                      Text(snapshot.error.toString(), textAlign: TextAlign.center),
                     ],
                   ),
                 );
@@ -127,7 +127,7 @@ class _MessagesPageState extends State<MessagesPage> {
                 return const GlassCard(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 28),
-                    child: Center(child: Text('当前还没有会话，可从好友页发起单聊。')),
+                    child: Center(child: Text('当前还没有会话，可从好友页发起私聊。')),
                   ),
                 );
               }
@@ -144,21 +144,20 @@ class _MessagesPageState extends State<MessagesPage> {
                             child: Row(
                               children: [
                                 AppAvatar(
-                                  label: item.targetNickname,
+                                  label: normalizeDisplayText(item.targetNickname),
                                   size: 56,
                                   imageUrl: item.targetAvatarUrl,
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              item.targetNickname,
+                                              normalizeDisplayText(item.targetNickname),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.w800,
                                                 color: AppTheme.textPrimary,
@@ -167,21 +166,15 @@ class _MessagesPageState extends State<MessagesPage> {
                                           ),
                                           Text(
                                             _displayTime(item.lastMessageAt),
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.textSecondary,
-                                            ),
+                                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        item.lastMessagePreview
-                                                    ?.trim()
-                                                    .isNotEmpty ==
-                                                true
-                                            ? item.lastMessagePreview!
-                                            : item.targetEmail,
+                                        item.lastMessagePreview?.trim().isNotEmpty == true
+                                            ? normalizeDisplayText(item.lastMessagePreview)
+                                            : normalizeDisplayText(item.targetEmail),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),

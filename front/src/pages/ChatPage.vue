@@ -1,5 +1,5 @@
 ﻿<template>
-  <section class="chat-workspace">
+  <section class="chat-workspace liquid-glass">
     <aside class="chat-sidebar">
       <header class="chat-sidebar-header">
         <div>
@@ -47,7 +47,7 @@
               <strong>{{ chat.targetNickname || chat.targetEmail }}</strong>
               <time>{{ chat.lastMessageAt ? formatShortTime(chat.lastMessageAt) : '' }}</time>
             </span>
-            <small>{{ chat.lastMessagePreview || '暂无消息' }}</small>
+            <small>{{ normalizeDisplayText(chat.lastMessagePreview) || '暂无消息' }}</small>
           </span>
           <span v-if="chat.unreadCount > 0" class="unread-badge">{{ chat.unreadCount > 99 ? '99+' : chat.unreadCount }}</span>
         </button>
@@ -127,7 +127,7 @@
                       </span>
                     </a>
                   </p>
-                  <p v-else>{{ message.content }}</p>
+                  <p v-else>{{ normalizeDisplayText(message.content) }}</p>
                 </template>
               </div>
               <footer class="message-meta">
@@ -223,6 +223,8 @@ import { uploadFile, uploadImage } from '../api/file'
 import AvatarFrame from '../components/AvatarFrame.vue'
 import SvgIcon from '../components/SvgIcon.vue'
 import { resolveAssetUrl } from '../utils/assets'
+import { notifyNewMessage } from '../utils/mobileNotify'
+import { normalizeDisplayText } from '../utils/text'
 
 const chats = ref<ChatSummary[]>([])
 const activeChat = ref<ChatSummary | null>(null)
@@ -308,6 +310,7 @@ async function handleSocketEvent(event: ChatSocketEvent) {
     return
   }
   if (!event.eventType.startsWith('message:')) return
+  notifyNewMessage('Hello Chat 私聊新消息', '你收到了一条新的私聊消息')
   await loadChats()
   if (activeChat.value && payload.chatId === activeChat.value.chatId) {
     await loadMessages()

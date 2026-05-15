@@ -13,16 +13,29 @@ const submitting = ref(false)
 
 const passwordInvalid = computed(() => !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,64}$/.test(form.password))
 const isBusy = computed(() => loadingCaptcha.value || submitting.value)
+const emailInvalid = computed(() => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+
+function passwordRuleHint(password: string) {
+  if (password.length < 8) return '密码长度至少 8 位'
+  if (password.length > 64) return '密码长度不能超过 64 位'
+  if (!/[A-Z]/.test(password)) return '密码必须包含至少 1 个大写字母'
+  if (!/[a-z]/.test(password)) return '密码必须包含至少 1 个小写字母'
+  if (!/\d/.test(password)) return '密码必须包含至少 1 个数字'
+  return ''
+}
 
 async function requestCaptcha() {
   error.value = ''
   status.value = ''
   captchaHint.value = ''
   if (!form.email) {
-    error.value = '请先输入邮箱'
+    error.value = '请输入邮箱'
     return
   }
-
+  if (emailInvalid.value) {
+    error.value = '邮箱格式不正确，请检查后重试'
+    return
+  }
   loadingCaptcha.value = true
   try {
     const code = await sendCaptcha(form.email, 'register')
@@ -39,8 +52,20 @@ async function requestCaptcha() {
 async function submitRegister() {
   error.value = ''
   status.value = ''
+  if (!form.email) {
+    error.value = '请输入邮箱'
+    return
+  }
+  if (emailInvalid.value) {
+    error.value = '邮箱格式不正确，请检查后重试'
+    return
+  }
+  if (!form.password) {
+    error.value = '请输入密码'
+    return
+  }
   if (passwordInvalid.value) {
-    error.value = '密码至少 8 位，并且必须包含大写字母、小写字母和数字'
+    error.value = passwordRuleHint(form.password)
     return
   }
   if (!form.captcha) {

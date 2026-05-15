@@ -1,4 +1,5 @@
 import 'package:app/core/config/app_environment.dart';
+import 'package:app/core/services/mobile_notification_service.dart';
 import 'package:app/core/services/file_service.dart';
 import 'package:app/core/services/auth_service.dart';
 import 'package:app/core/realtime/chat_socket_service.dart';
@@ -67,6 +68,7 @@ class AppScope extends InheritedWidget {
   final MomentService momentService;
   final FileService fileService;
   final ChatSocketService chatSocketService;
+  final MobileNotificationService notificationService = MobileNotificationService();
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();

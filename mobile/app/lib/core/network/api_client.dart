@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:app/core/network/api_exception.dart';
 import 'package:app/core/storage/session_store.dart';
@@ -9,9 +10,9 @@ class ApiClient {
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-        sendTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
       ),
     );
 
@@ -25,6 +26,7 @@ class ApiClient {
           handler.next(options);
         },
         onError: (error, handler) {
+          _logNetworkError(error);
           final apiError = _toApiException(error);
           if (_shouldForceLogout(
             error.response?.statusCode,
@@ -155,6 +157,25 @@ class ApiClient {
     }
 
     return ApiException(error.message ?? '请求失败', code: statusCode);
+  }
+
+  void _logNetworkError(DioException error) {
+    final request = error.requestOptions;
+    final socketError = error.error is SocketException
+        ? error.error as SocketException
+        : null;
+    final osError = socketError?.osError;
+    // ignore: avoid_print
+    print(
+      '[ApiClient] request failed: '
+      'method=${request.method}, '
+      'url=${request.uri}, '
+      'dioType=${error.type}, '
+      'statusCode=${error.response?.statusCode}, '
+      'socketMessage=${socketError?.message}, '
+      'osCode=${osError?.errorCode}, '
+      'osMessage=${osError?.message}',
+    );
   }
 
   bool _shouldForceLogout(int? statusCode, int? code, String message) {

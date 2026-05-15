@@ -23,7 +23,7 @@ class AppEnvironment {
 
   static const String apiPort = String.fromEnvironment(
     'API_PORT',
-    defaultValue: '8083',
+    defaultValue: '444',
   );
 
   static bool get isProd => mode == 'prod';

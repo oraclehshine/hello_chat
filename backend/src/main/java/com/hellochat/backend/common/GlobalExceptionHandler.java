@@ -1,11 +1,13 @@
 package com.hellochat.backend.common;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -44,10 +46,32 @@ public class GlobalExceptionHandler {
         return ApiResponse.failure(40001, "upload file too large, backend limit is 200MB");
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
+    public ApiResponse<Void> handleMethodNotSupported(
+        HttpRequestMethodNotSupportedException ex,
+        HttpServletRequest request
+    ) {
+        log.warn(
+            "Method not supported: method={}, uri={}, query={}, supportedMethods={}",
+            request.getMethod(),
+            request.getRequestURI(),
+            request.getQueryString(),
+            ex.getSupportedHttpMethods()
+        );
+        return ApiResponse.failure(40500, "request method not supported");
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiResponse<Void> handleException(Exception ex) {
-        log.error("Unhandled exception", ex);
+    public ApiResponse<Void> handleException(Exception ex, HttpServletRequest request) {
+        log.error(
+            "Unhandled exception: method={}, uri={}, query={}",
+            request.getMethod(),
+            request.getRequestURI(),
+            request.getQueryString(),
+            ex
+        );
         return ApiResponse.failure(50000, "internal server error");
     }
 

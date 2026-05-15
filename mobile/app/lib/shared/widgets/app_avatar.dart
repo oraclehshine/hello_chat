@@ -1,4 +1,5 @@
 import 'package:app/app/theme/app_theme.dart';
+import 'package:app/core/config/app_environment.dart';
 import 'package:app/core/utils/asset_urls.dart';
 import 'package:flutter/material.dart';
 
@@ -45,6 +46,12 @@ class AppAvatar extends StatelessWidget {
   String _resolveAvatarUrl(String url) {
     if (url.isEmpty) {
       return '';
+    }
+    if (url.startsWith('/api/') || url.startsWith('api/')) {
+      final apiBase = Uri.parse(AppEnvironment.baseUrl);
+      final origin = '${apiBase.scheme}://${apiBase.authority}';
+      final normalized = url.startsWith('/') ? url : '/$url';
+      return '$origin$normalized';
     }
     if (url.contains('/files/redirect?source=')) {
       return url;

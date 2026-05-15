@@ -666,6 +666,30 @@ a {
   height: calc(100vh - 32px);
 }
 
+.liquid-glass {
+  position: relative;
+  isolation: isolate;
+}
+
+.liquid-glass::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.62), transparent 26%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 42%, rgba(255, 255, 255, 0.24));
+  opacity: 0.66;
+  animation: liquid-glass-flow 7.2s ease-in-out infinite alternate;
+  pointer-events: none;
+  content: '';
+}
+
+.liquid-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -687,6 +711,18 @@ a {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes liquid-glass-flow {
+  from {
+    transform: translate3d(-2%, 0, 0);
+    filter: saturate(1);
+  }
+
+  to {
+    transform: translate3d(2%, 0, 0);
+    filter: saturate(1.08);
   }
 }
 
@@ -766,5 +802,10 @@ a {
   .danger-btn,
   .link-btn {
     width: 100%;
+  }
+
+  .liquid-glass::before {
+    animation-duration: 10s;
+    opacity: 0.52;
   }
 }

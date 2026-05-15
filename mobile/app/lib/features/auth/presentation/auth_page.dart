@@ -1,4 +1,4 @@
-import 'package:app/app/app_scope.dart';
+﻿import 'package:app/app/app_scope.dart';
 import 'package:app/app/theme/app_theme.dart';
 import 'package:app/core/network/api_exception.dart';
 import 'package:app/shared/widgets/brand_mark.dart';
@@ -46,7 +46,7 @@ class _AuthPageState extends State<AuthPage> {
 
     final buttonText = switch (_mode) {
       AuthMode.login => '登录',
-      AuthMode.register => '注册',
+      AuthMode.register => '注册并进入',
       AuthMode.reset => '更新密码',
     };
 
@@ -87,9 +87,7 @@ class _AuthPageState extends State<AuthPage> {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.86),
                         borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.5),
-                        ),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.08),
@@ -102,10 +100,7 @@ class _AuthPageState extends State<AuthPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              headline,
-                              style: Theme.of(context).textTheme.headlineMedium,
-                            ),
+                            Text(headline, style: Theme.of(context).textTheme.headlineMedium),
                             const SizedBox(height: 20),
                             SegmentedButton<AuthMode>(
                               segments: const [
@@ -120,15 +115,9 @@ class _AuthPageState extends State<AuthPage> {
                                   label: Text('注册'),
                                 ),
                               ],
-                              selected: {
-                                _mode == AuthMode.reset
-                                    ? AuthMode.login
-                                    : _mode,
-                              },
+                              selected: {_mode == AuthMode.reset ? AuthMode.login : _mode},
                               onSelectionChanged: (value) {
-                                setState(() {
-                                  _mode = value.first;
-                                });
+                                setState(() => _mode = value.first);
                               },
                             ),
                             const SizedBox(height: 22),
@@ -150,9 +139,7 @@ class _AuthPageState extends State<AuthPage> {
                                       controller: _captchaController,
                                       decoration: const InputDecoration(
                                         hintText: '输入邮箱验证码',
-                                        prefixIcon: Icon(
-                                          Icons.mark_email_read_outlined,
-                                        ),
+                                        prefixIcon: Icon(Icons.mark_email_read_outlined),
                                       ),
                                     ),
                                   ),
@@ -160,23 +147,13 @@ class _AuthPageState extends State<AuthPage> {
                                   SizedBox(
                                     height: 56,
                                     child: OutlinedButton(
-                                      onPressed: _sendingCaptcha
-                                          ? null
-                                          : _sendCaptcha,
+                                      onPressed: _sendingCaptcha ? null : _sendCaptcha,
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppTheme.primaryBlue,
-                                        side: const BorderSide(
-                                          color: AppTheme.border,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            18,
-                                          ),
-                                        ),
+                                        side: const BorderSide(color: AppTheme.border),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                                       ),
-                                      child: Text(
-                                        _sendingCaptcha ? '发送中' : '获取验证码',
-                                      ),
+                                      child: Text(_sendingCaptcha ? '发送中' : '获取验证码'),
                                     ),
                                   ),
                                 ],
@@ -189,7 +166,7 @@ class _AuthPageState extends State<AuthPage> {
                               TextField(
                                 controller: _nicknameController,
                                 decoration: const InputDecoration(
-                                  hintText: '输入昵称',
+                                  hintText: '输入昵称（可选）',
                                   prefixIcon: Icon(Icons.badge_outlined),
                                 ),
                               ),
@@ -206,6 +183,11 @@ class _AuthPageState extends State<AuthPage> {
                               ),
                             ),
                             if (_mode == AuthMode.register) ...[
+                              const SizedBox(height: 8),
+                              const Text(
+                                '密码至少 8 位，且包含大写字母、小写字母和数字',
+                                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              ),
                               const SizedBox(height: 14),
                               const _Label('确认密码'),
                               const SizedBox(height: 8),
@@ -214,9 +196,7 @@ class _AuthPageState extends State<AuthPage> {
                                 obscureText: true,
                                 decoration: const InputDecoration(
                                   hintText: '再次输入密码',
-                                  prefixIcon: Icon(
-                                    Icons.verified_user_outlined,
-                                  ),
+                                  prefixIcon: Icon(Icons.verified_user_outlined),
                                 ),
                               ),
                             ],
@@ -230,24 +210,8 @@ class _AuthPageState extends State<AuthPage> {
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _mode = AuthMode.reset;
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 0,
-                                    ),
-                                    minimumSize: const Size(0, 28),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text(
-                                    '找回密码',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
+                                  onPressed: () => setState(() => _mode = AuthMode.reset),
+                                  child: const Text('忘记密码'),
                                 ),
                               ),
                             ] else if (_mode == AuthMode.reset) ...[
@@ -255,24 +219,8 @@ class _AuthPageState extends State<AuthPage> {
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _mode = AuthMode.login;
-                                    });
-                                  },
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 0,
-                                    ),
-                                    minimumSize: const Size(0, 28),
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text(
-                                    '返回登录',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
+                                  onPressed: () => setState(() => _mode = AuthMode.login),
+                                  child: const Text('返回登录'),
                                 ),
                               ),
                             ],
@@ -291,71 +239,74 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _sendCaptcha() async {
-    setState(() {
-      _sendingCaptcha = true;
-    });
+    final email = _emailController.text.trim();
+    final emailError = _validateEmail(email);
+    if (emailError != null) {
+      _toast(emailError);
+      return;
+    }
+
+    setState(() => _sendingCaptcha = true);
     try {
       final scene = _mode == AuthMode.reset ? 'reset_password' : 'register';
-      await AppScope.of(
-        context,
-      ).authService.sendCaptcha(_emailController.text.trim(), scene);
-      _toast('验证码已发送');
+      await AppScope.of(context).authService.sendCaptcha(email, scene);
+      _toast('验证码已发送，请注意查收邮箱');
     } on ApiException catch (error) {
       _toast(error.message);
     } catch (error) {
       _toast(error.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _sendingCaptcha = false;
-        });
-      }
+      if (mounted) setState(() => _sendingCaptcha = false);
     }
   }
 
   Future<void> _submit() async {
-    setState(() {
-      _submitting = true;
-    });
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final captcha = _captchaController.text.trim();
 
+    final emailError = _validateEmail(email);
+    if (emailError != null) {
+      _toast(emailError);
+      return;
+    }
+
+    if (_mode != AuthMode.login && captcha.isEmpty) {
+      _toast('请输入邮箱验证码');
+      return;
+    }
+
+    final passwordError = _validatePassword(password);
+    if (passwordError != null) {
+      _toast(passwordError);
+      return;
+    }
+
+    if (_mode == AuthMode.register && password != _confirmPasswordController.text) {
+      _toast('两次输入的密码不一致');
+      return;
+    }
+
+    setState(() => _submitting = true);
     try {
       final authService = AppScope.of(context).authService;
       switch (_mode) {
         case AuthMode.login:
-          await authService.login(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+          await authService.login(email: email, password: password);
           widget.onLogin();
           break;
         case AuthMode.register:
-          if (_passwordController.text != _confirmPasswordController.text) {
-            throw const ApiException('两次密码不一致');
-          }
-          await authService.register(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-            captcha: _captchaController.text.trim(),
-          );
-          if (_nicknameController.text.trim().isNotEmpty) {
-            await authService.updateProfile(
-              nickname: _nicknameController.text.trim(),
-            );
+          await authService.register(email: email, password: password, captcha: captcha);
+          final nickname = _nicknameController.text.trim();
+          if (nickname.isNotEmpty) {
+            await authService.updateProfile(nickname: nickname);
           }
           widget.onLogin();
           break;
         case AuthMode.reset:
-          await authService.resetPassword(
-            email: _emailController.text.trim(),
-            captcha: _captchaController.text.trim(),
-            newPassword: _passwordController.text,
-          );
-          if (mounted) {
-            setState(() {
-              _mode = AuthMode.login;
-            });
-          }
-          _toast('密码已更新');
+          await authService.resetPassword(email: email, captcha: captcha, newPassword: password);
+          if (mounted) setState(() => _mode = AuthMode.login);
+          _toast('密码已更新，请重新登录');
           break;
       }
     } on ApiException catch (error) {
@@ -363,18 +314,29 @@ class _AuthPageState extends State<AuthPage> {
     } catch (error) {
       _toast(error.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-        });
-      }
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
+  String? _validateEmail(String email) {
+    if (email.isEmpty) return '请输入邮箱';
+    final valid = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email);
+    if (!valid) return '邮箱格式不正确，请检查后重试';
+    return null;
+  }
+
+  String? _validatePassword(String password) {
+    if (password.isEmpty) return '请输入密码';
+    if (password.length < 8) return '密码长度至少 8 位';
+    if (password.length > 64) return '密码长度不能超过 64 位';
+    if (!RegExp(r'[A-Z]').hasMatch(password)) return '密码必须包含至少 1 个大写字母';
+    if (!RegExp(r'[a-z]').hasMatch(password)) return '密码必须包含至少 1 个小写字母';
+    if (!RegExp(r'\d').hasMatch(password)) return '密码必须包含至少 1 个数字';
+    return null;
+  }
+
   void _toast(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -387,10 +349,7 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        fontWeight: FontWeight.w700,
-        color: AppTheme.textPrimary,
-      ),
+      style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
     );
   }
 }

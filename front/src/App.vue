@@ -1,10 +1,11 @@
 ﻿<script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { logout } from './api/auth'
 import AvatarFrame from './components/AvatarFrame.vue'
 import AuthPosterShowcase from './components/AuthPosterShowcase.vue'
 import dogLogo from './assets/dog.svg'
+import { clearUnreadTitle, prepareMobileNotification } from './utils/mobileNotify'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,6 +27,21 @@ const authData = computed(() => {
 const displayName = computed(() => authData.value.nickname || authData.value.email || 'Hello Chat')
 const displayEmail = computed(() => authData.value.email || '在线工作台')
 const avatarUrl = computed(() => authData.value.avatarUrl || '')
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    clearUnreadTitle()
+  }
+}
+
+onMounted(() => {
+  prepareMobileNotification()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
 
 async function handleLogout() {
   const refreshToken = localStorage.getItem('refreshToken')

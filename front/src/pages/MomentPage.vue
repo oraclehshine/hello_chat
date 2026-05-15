@@ -1,5 +1,5 @@
 ﻿<template>
-  <section class="moments-workspace">
+  <section class="moments-workspace liquid-glass">
     <main class="timeline-panel">
       <header class="timeline-header">
         <div class="timeline-title-block">
@@ -51,7 +51,7 @@
         </header>
 
         <textarea v-if="editingMomentId === moment.momentId" v-model="editDraft" rows="4" maxlength="5000"></textarea>
-        <p v-else class="moment-content">{{ moment.content }}</p>
+        <p v-else class="moment-content">{{ normalizeDisplayText(moment.content) }}</p>
         <div v-if="moment.tags.length || moment.mood || moment.activity" class="moment-meta-tags">
           <span v-for="tag in moment.tags" :key="tag">#{{ tag }}</span>
           <span v-if="moment.mood">{{ moment.mood }}</span>
@@ -120,7 +120,7 @@
                 <div v-if="comment.replyToCommentId" class="comment-reply-target">
                   @{{ replyTargetLabel(comment.replyToCommentId) }}
                 </div>
-                <p>{{ comment.content }}</p>
+                <p>{{ normalizeDisplayText(comment.content) }}</p>
               </div>
               <div class="comment-meta">
                 <button @click="startReply(comment)">回复</button>
@@ -265,8 +265,8 @@
                 </span>
                 <small>{{ formatTime(notification.createdAt) }}</small>
               </div>
-              <strong>{{ notification.title }}</strong>
-              <span>{{ notification.content }}</span>
+              <strong>{{ normalizeDisplayText(notification.title) }}</strong>
+              <span>{{ normalizeDisplayText(notification.content) }}</span>
             </button>
           </div>
         </section>
@@ -307,6 +307,7 @@ import { listFriends, type Friend } from '../api/friend'
 import AvatarFrame from '../components/AvatarFrame.vue'
 import SvgIcon from '../components/SvgIcon.vue'
 import { resolveAssetUrl } from '../utils/assets'
+import { normalizeDisplayText } from '../utils/text'
 import {
   addMomentComment,
   collectMoment,

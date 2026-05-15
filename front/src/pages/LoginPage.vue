@@ -8,10 +8,23 @@ const form = reactive({ email: '', password: '' })
 const status = ref('')
 const error = ref('')
 const loading = ref(false)
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 async function submitLogin() {
   error.value = ''
   status.value = ''
+  if (!form.email) {
+    error.value = '请输入邮箱'
+    return
+  }
+  if (!emailPattern.test(form.email)) {
+    error.value = '邮箱格式不正确，请检查后重试'
+    return
+  }
+  if (!form.password) {
+    error.value = '请输入密码'
+    return
+  }
   loading.value = true
   try {
     const data = await login(form.email, form.password)

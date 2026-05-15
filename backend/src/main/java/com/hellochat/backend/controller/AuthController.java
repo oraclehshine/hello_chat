@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,6 +37,17 @@ public class AuthController {
 
     @PostMapping("/email-captcha")
     public ApiResponse<String> sendCaptcha(@Valid @RequestBody CaptchaRequest request) {
+        return ApiResponse.success(authService.sendCaptcha(request));
+    }
+
+    @GetMapping("/email-captcha")
+    public ApiResponse<String> sendCaptchaByGet(
+        @RequestParam("email") String email,
+        @RequestParam(value = "scene", defaultValue = "register") String scene
+    ) {
+        CaptchaRequest request = new CaptchaRequest();
+        request.setEmail(email);
+        request.setScene(scene);
         return ApiResponse.success(authService.sendCaptcha(request));
     }
 
@@ -62,6 +74,16 @@ public class AuthController {
 
     @PostMapping("/password-reset-captcha")
     public ApiResponse<String> sendPasswordResetCaptcha(@Valid @RequestBody CaptchaRequest request) {
+        request.setScene("reset_password");
+        return ApiResponse.success(authService.sendCaptcha(request));
+    }
+
+    @GetMapping("/password-reset-captcha")
+    public ApiResponse<String> sendPasswordResetCaptchaByGet(
+        @RequestParam("email") String email
+    ) {
+        CaptchaRequest request = new CaptchaRequest();
+        request.setEmail(email);
         request.setScene("reset_password");
         return ApiResponse.success(authService.sendCaptcha(request));
     }
