@@ -1,3 +1,5 @@
+// ignore_for_file: use_null_aware_elements
+
 import 'package:app/core/models/moment.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/core/network/paged_result.dart';
@@ -66,6 +68,33 @@ class MomentService {
           'activity': activity.trim(),
         if (location != null && location.trim().isNotEmpty)
           'location': location.trim(),
+      },
+    );
+    return Moment.fromJson(data);
+  }
+
+  Future<Moment> updateMoment({
+    required int momentId,
+    String? content,
+    String? mood,
+    String? activity,
+    String? location,
+    List<String>? tags,
+    List<int>? fileIds,
+    String? visibility,
+    List<int>? visibleUserIds,
+  }) async {
+    final data = await _client.put(
+      '/moments/$momentId',
+      data: {
+        if (content != null) 'content': content,
+        if (fileIds != null) 'fileIds': fileIds,
+        if (tags != null) 'tags': tags,
+        if (visibility != null) 'visibility': visibility,
+        if (visibleUserIds != null) 'visibleUserIds': visibleUserIds,
+        if (mood != null) 'mood': mood,
+        if (activity != null) 'activity': activity,
+        if (location != null) 'location': location,
       },
     );
     return Moment.fromJson(data);

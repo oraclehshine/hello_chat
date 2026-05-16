@@ -1,3 +1,5 @@
+// ignore_for_file: use_null_aware_elements
+
 import 'package:app/core/models/group.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/core/network/paged_result.dart';
@@ -23,6 +25,18 @@ class GroupService {
     return paged.list;
   }
 
+  Future<PagedResult<GroupSummary>> searchGroupsPaged({
+    required String keyword,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final data = await _client.get(
+      '/groups/search',
+      queryParameters: {'keyword': keyword, 'page': page, 'pageSize': pageSize},
+    );
+    return PagedResult.fromJson(data, GroupSummary.fromJson);
+  }
+
   Future<GroupSummary> getGroup(int groupId) async {
     final data = await _client.get('/groups/$groupId');
     return GroupSummary.fromJson(data);
@@ -40,6 +54,29 @@ class GroupService {
         if (description != null && description.trim().isNotEmpty)
           'description': description.trim(),
         if (memberIds != null && memberIds.isNotEmpty) 'memberIds': memberIds,
+      },
+    );
+    return GroupSummary.fromJson(data);
+  }
+
+  Future<GroupSummary> updateGroupProfile({
+    required int groupId,
+    String? groupName,
+    String? description,
+    String? avatarUrl,
+    bool? chatEnabled,
+    int? recallLimitMinutes,
+  }) async {
+    final data = await _client.put(
+      '/groups/$groupId',
+      data: {
+        if (groupName != null && groupName.trim().isNotEmpty)
+          'groupName': groupName.trim(),
+        if (description != null) 'description': description.trim(),
+        if (avatarUrl != null) 'avatarUrl': avatarUrl,
+        if (chatEnabled != null) 'chatEnabled': chatEnabled,
+        if (recallLimitMinutes != null)
+          'recallLimitMinutes': recallLimitMinutes,
       },
     );
     return GroupSummary.fromJson(data);
@@ -65,6 +102,37 @@ class GroupService {
     final raw = (data['_value'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>();
     return raw.map(GroupJoinRequestItem.fromJson).toList();
+  }
+
+  Future<List<GroupJoinRequestItem>> listJoinRequests(int groupId) async {
+    final data = await _client.get('/groups/$groupId/join-requests');
+    final raw = (data['_value'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>();
+    return raw.map(GroupJoinRequestItem.fromJson).toList();
+  }
+
+  Future<List<GroupMemberItem>> approveJoinRequest({
+    required int groupId,
+    required int requestId,
+  }) async {
+    final data = await _client.post(
+      '/groups/$groupId/join-requests/$requestId/approve',
+    );
+    final raw = (data['_value'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>();
+    return raw.map(GroupMemberItem.fromJson).toList();
+  }
+
+  Future<List<GroupMemberItem>> rejectJoinRequest({
+    required int groupId,
+    required int requestId,
+  }) async {
+    final data = await _client.post(
+      '/groups/$groupId/join-requests/$requestId/reject',
+    );
+    final raw = (data['_value'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>();
+    return raw.map(GroupMemberItem.fromJson).toList();
   }
 
   Future<List<GroupMemberItem>> listMembers(int groupId) async {
@@ -111,10 +179,39 @@ class GroupService {
     return raw.map(GroupMemberItem.fromJson).toList();
   }
 
-  Future<PagedResult<GroupMessage>> listMessages(int groupId) async {
+  Future<PagedResult<GroupMessage>> listMessages(
+    int groupId, {
+    int page = 1,
+    int pageSize = 50,
+  }) async {
     final data = await _client.get(
       '/groups/$groupId/messages',
-      queryParameters: {'page': 1, 'pageSize': 50},
+      queryParameters: {'page': page, 'pageSize': pageSize},
+    );
+    return PagedResult.fromJson(data, GroupMessage.fromJson);
+  }
+
+  Future<PagedResult<GroupMessage>> searchMessages({
+    required int groupId,
+    required String keyword,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final data = await _client.get(
+      '/groups/$groupId/messages/search',
+      queryParameters: {'keyword': keyword, 'page': page, 'pageSize': pageSize},
+    );
+    return PagedResult.fromJson(data, GroupMessage.fromJson);
+  }
+
+  Future<PagedResult<GroupMessage>> listFiles({
+    required int groupId,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final data = await _client.get(
+      '/groups/$groupId/files',
+      queryParameters: {'page': page, 'pageSize': pageSize},
     );
     return PagedResult.fromJson(data, GroupMessage.fromJson);
   }
@@ -122,10 +219,33 @@ class GroupService {
   Future<GroupMessage> sendMessage({
     required int groupId,
     required String content,
+    List<int> mentionUserIds = const <int>[],
+    int? replyToMessageId,
   }) async {
     final data = await _client.post(
       '/groups/$groupId/messages',
-      data: {'messageType': 'text', 'content': content},
+      data: {
+        'messageType': 'text',
+        'content': content,
+        'mentionUserIds': mentionUserIds,
+        if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
+      },
+    );
+    return GroupMessage.fromJson(data);
+  }
+
+  Future<GroupMessage> sendMentionAllMessage({
+    required int groupId,
+    required String content,
+    int? replyToMessageId,
+  }) async {
+    final data = await _client.post(
+      '/groups/$groupId/messages/mention-all',
+      data: {
+        'messageType': 'text',
+        'content': content,
+        if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
+      },
     );
     return GroupMessage.fromJson(data);
   }
@@ -159,6 +279,50 @@ class GroupService {
       data: {'notice': notice},
     );
     return GroupSummary.fromJson(data);
+  }
+
+  Future<List<GroupMemberItem>> addMembers({
+    required int groupId,
+    required List<int> memberIds,
+  }) async {
+    final data = await _client.post(
+      '/groups/$groupId/members',
+      data: {'memberIds': memberIds},
+    );
+    final raw = (data['_value'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>();
+    return raw.map(GroupMemberItem.fromJson).toList();
+  }
+
+  Future<List<GroupMemberItem>> updateMyNickname({
+    required int groupId,
+    required String nickname,
+  }) async {
+    final data = await _client.put(
+      '/groups/$groupId/members/me/nickname',
+      data: {'nickname': nickname.trim()},
+    );
+    final raw = (data['_value'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>();
+    return raw.map(GroupMemberItem.fromJson).toList();
+  }
+
+  Future<void> markAsRead(int groupId) async {
+    await _client.post('/groups/$groupId/read');
+  }
+
+  Future<void> recallMessage({
+    required int groupId,
+    required int messageId,
+  }) async {
+    await _client.post('/groups/$groupId/messages/$messageId/recall');
+  }
+
+  Future<void> deleteMessage({
+    required int groupId,
+    required int messageId,
+  }) async {
+    await _client.delete('/groups/$groupId/messages/$messageId');
   }
 
   Future<void> removeMember({required int groupId, required int userId}) async {

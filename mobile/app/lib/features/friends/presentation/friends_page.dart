@@ -47,11 +47,13 @@ class _FriendsPageState extends State<FriendsPage> {
       scope.friendService.listFriends(),
       scope.friendService.listReceivedFriendRequests(),
       scope.friendService.listSentFriendRequests(),
+      scope.friendService.listBlockedUsers(),
     ]);
     return _FriendPageData(
       friends: results[0] as List<FriendItem>,
       received: results[1] as List<FriendRequestItem>,
       sent: results[2] as List<FriendRequestItem>,
+      blocked: results[3] as List<BlockedUserItem>,
     );
   }
 
@@ -198,7 +200,7 @@ class _FriendsPageState extends State<FriendsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['好友', '收到', '已发送'];
+    const tabs = ['好友', '收到', '已发送', '黑名单'];
 
     return RefreshIndicator(
       onRefresh: _reload,
@@ -375,7 +377,10 @@ class _FriendsPageState extends State<FriendsPage> {
               if (_tab == 1) {
                 return _buildReceivedList(data.received);
               }
-              return _buildSentList(data.sent);
+              if (_tab == 2) {
+                return _buildSentList(data.sent);
+              }
+              return _buildBlockedList(data.blocked);
             },
           ),
         ],
@@ -429,9 +434,307 @@ class _FriendsPageState extends State<FriendsPage> {
                         ],
                       ),
                     ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton.tonal(
+                          onPressed: () => _openPrivateChat(item),
+                          child: const Text('私聊'),
+                        ),
+                        IconButton(
+                          onPressed: () => _showFriendActions(item),
+                          icon: const Icon(Icons.more_horiz_rounded),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Future<void> _showFriendActions(FriendItem item) async {
+    final service = AppScope.of(context).friendService;
+    final messenger = ScaffoldMessenger.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: GlassCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.remarkName?.isNotEmpty == true
+                      ? item.remarkName!
+                      : item.nickname,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.badge_outlined),
+                  title: const Text('修改备注和分组'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _showEditFriendSheet(item);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    item.star ? Icons.star_rounded : Icons.star_border_rounded,
+                  ),
+                  title: Text(item.star ? '取消星标' : '设为星标'),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    try {
+                      await service.updateFriend(
+                        friendUserId: item.userId,
+                        star: !item.star,
+                      );
+                      await _reload();
+                    } on ApiException catch (error) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(error.message)),
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.block_rounded),
+                  title: const Text('加入黑名单'),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    try {
+                      await service.blockUser(item.userId);
+                      await _reload();
+                    } on ApiException catch (error) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(error.message)),
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.person_remove_alt_1_outlined,
+                    color: Colors.redAccent,
+                  ),
+                  title: const Text(
+                    '删除好友',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    final confirmed = await _confirm(
+                      title: '删除好友',
+                      content: '确认删除该好友关系吗？',
+                    );
+                    if (!confirmed) return;
+                    try {
+                      await service.deleteFriend(item.userId);
+                      await _reload();
+                    } on ApiException catch (error) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(error.message)),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditFriendSheet(FriendItem item) async {
+    final remarkController = TextEditingController(text: item.remarkName ?? '');
+    final groupController = TextEditingController(text: item.friendGroup ?? '');
+    var star = item.star;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final messenger = ScaffoldMessenger.of(sheetContext);
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              return GlassCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '好友资料',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: remarkController,
+                      decoration: const InputDecoration(hintText: '备注名'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: groupController,
+                      decoration: const InputDecoration(hintText: '分组'),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: star,
+                      title: const Text('星标好友'),
+                      onChanged: (value) => setSheetState(() => star = value),
+                    ),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: const Text('取消'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () async {
+                            try {
+                              await AppScope.of(
+                                context,
+                              ).friendService.updateFriend(
+                                friendUserId: item.userId,
+                                remarkName: remarkController.text,
+                                friendGroup: groupController.text,
+                                star: star,
+                              );
+                              if (!sheetContext.mounted) return;
+                              Navigator.of(sheetContext).pop();
+                              await _reload();
+                            } on ApiException catch (error) {
+                              messenger.showSnackBar(
+                                SnackBar(content: Text(error.message)),
+                              );
+                            }
+                          },
+                          child: const Text('保存'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String content,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Widget _buildBlockedList(List<BlockedUserItem> items) {
+    if (items.isEmpty) {
+      return const GlassCard(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Text('当前黑名单为空。'),
+        ),
+      );
+    }
+
+    return Column(
+      children: items
+          .map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: GlassCard(
+                child: Row(
+                  children: [
+                    AppAvatar(
+                      label: item.nickname,
+                      size: 54,
+                      imageUrl: item.avatarUrl,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.nickname,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            item.signature?.isNotEmpty == true
+                                ? item.signature!
+                                : item.email,
+                          ),
+                        ],
+                      ),
+                    ),
                     FilledButton.tonal(
-                      onPressed: () => _openPrivateChat(item),
-                      child: const Text('私聊'),
+                      onPressed: () async {
+                        try {
+                          await AppScope.of(
+                            context,
+                          ).friendService.unblockUser(item.userId);
+                          await _reload();
+                        } on ApiException catch (error) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.message)),
+                          );
+                        }
+                      },
+                      child: const Text('移出'),
                     ),
                   ],
                 ),
@@ -595,9 +898,11 @@ class _FriendPageData {
     required this.friends,
     required this.received,
     required this.sent,
+    required this.blocked,
   });
 
   final List<FriendItem> friends;
   final List<FriendRequestItem> received;
   final List<FriendRequestItem> sent;
+  final List<BlockedUserItem> blocked;
 }

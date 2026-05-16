@@ -1,3 +1,5 @@
+// ignore_for_file: use_null_aware_elements
+
 import 'package:app/core/models/friend.dart';
 import 'package:app/core/network/api_client.dart';
 
@@ -11,6 +13,42 @@ class FriendService {
     final raw = (data['_value'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>();
     return raw.map(FriendItem.fromJson).toList();
+  }
+
+  Future<FriendItem> updateFriend({
+    required int friendUserId,
+    String? remarkName,
+    String? friendGroup,
+    bool? star,
+  }) async {
+    final data = await _client.put(
+      '/users/friends/$friendUserId',
+      data: {
+        if (remarkName != null) 'remarkName': remarkName.trim(),
+        if (friendGroup != null) 'friendGroup': friendGroup.trim(),
+        if (star != null) 'star': star,
+      },
+    );
+    return FriendItem.fromJson(data);
+  }
+
+  Future<void> deleteFriend(int friendUserId) async {
+    await _client.delete('/users/friends/$friendUserId');
+  }
+
+  Future<void> blockUser(int blockedUserId) async {
+    await _client.post('/users/blocks/$blockedUserId');
+  }
+
+  Future<void> unblockUser(int blockedUserId) async {
+    await _client.delete('/users/blocks/$blockedUserId');
+  }
+
+  Future<List<BlockedUserItem>> listBlockedUsers() async {
+    final data = await _client.get('/users/blocks');
+    final raw = (data['_value'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>();
+    return raw.map(BlockedUserItem.fromJson).toList();
   }
 
   Future<List<FriendRequestItem>> listReceivedFriendRequests() async {

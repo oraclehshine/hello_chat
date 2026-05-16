@@ -128,6 +128,9 @@ class _MomentsPageState extends State<MomentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId =
+        AppScope.of(context).sessionStore.session?.userId ?? 0;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
@@ -232,6 +235,26 @@ class _MomentsPageState extends State<MomentsPage> {
                                     ],
                                   ),
                                 ),
+                                if (item.authorId == currentUserId)
+                                  PopupMenuButton<String>(
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _showEditMomentSheet(item);
+                                      } else if (value == 'delete') {
+                                        _confirmDeleteMoment(item);
+                                      }
+                                    },
+                                    itemBuilder: (context) => const [
+                                      PopupMenuItem<String>(
+                                        value: 'edit',
+                                        child: Text('编辑动态'),
+                                      ),
+                                      PopupMenuItem<String>(
+                                        value: 'delete',
+                                        child: Text('删除动态'),
+                                      ),
+                                    ],
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -380,6 +403,155 @@ class _MomentsPageState extends State<MomentsPage> {
         );
       },
     );
+  }
+
+  Future<void> _showEditMomentSheet(Moment item) async {
+    final service = AppScope.of(context).momentService;
+    final contentController = TextEditingController(text: item.content);
+    final locationController = TextEditingController(text: item.location ?? '');
+    final moodController = TextEditingController(text: item.mood ?? '');
+    final activityController = TextEditingController(text: item.activity ?? '');
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final messenger = ScaffoldMessenger.of(sheetContext);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+          ),
+          child: GlassCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '编辑动态',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: contentController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(hintText: '说点什么...'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(hintText: '位置，可选'),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: moodController,
+                        decoration: const InputDecoration(hintText: '心情'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: activityController,
+                        decoration: const InputDecoration(hintText: '活动'),
+                      ),
+                    ),
+                  ],
+                ),
+                if (item.mediaList.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    '已保留 ${item.mediaList.length} 个媒体附件',
+                    style: const TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      child: const Text('取消'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () async {
+                        final content = contentController.text.trim();
+                        if (content.isEmpty && item.mediaList.isEmpty) return;
+                        try {
+                          await service.updateMoment(
+                            momentId: item.momentId,
+                            content: content,
+                            location: locationController.text.trim(),
+                            mood: moodController.text.trim(),
+                            activity: activityController.text.trim(),
+                            tags: item.tags,
+                            fileIds: item.mediaList
+                                .map((media) => media.fileId)
+                                .toList(),
+                          );
+                          if (!sheetContext.mounted) return;
+                          Navigator.of(sheetContext).pop();
+                          await _reload();
+                        } on ApiException catch (e) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(e.message)),
+                          );
+                        }
+                      },
+                      child: const Text('保存'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteMoment(Moment item) async {
+    final service = AppScope.of(context).momentService;
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除动态'),
+        content: const Text('确认删除这条朋友圈动态吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFF15B5B),
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      await service.deleteMoment(item.momentId);
+      await _reload();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> _showComposer() async {

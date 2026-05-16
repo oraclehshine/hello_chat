@@ -5,8 +5,13 @@ class GroupSummary {
     this.description,
     this.avatarUrl,
     this.notice,
+    this.ownerId,
+    this.inviteCode,
+    this.chatEnabled = true,
+    this.noticeUnread = false,
     required this.memberCount,
     required this.unreadCount,
+    this.mentionUnreadCount = 0,
   });
 
   final int groupId;
@@ -14,8 +19,13 @@ class GroupSummary {
   final String? description;
   final String? avatarUrl;
   final String? notice;
+  final int? ownerId;
+  final String? inviteCode;
+  final bool chatEnabled;
+  final bool noticeUnread;
   final int memberCount;
   final int unreadCount;
+  final int mentionUnreadCount;
 
   factory GroupSummary.fromJson(Map<String, dynamic> json) {
     return GroupSummary(
@@ -24,9 +34,22 @@ class GroupSummary {
       description: json['description']?.toString(),
       avatarUrl: json['avatarUrl']?.toString(),
       notice: json['notice']?.toString(),
+      ownerId: (json['ownerId'] as num?)?.toInt(),
+      inviteCode: json['inviteCode']?.toString(),
+      chatEnabled: _boolish(json['chatEnabled'], defaultValue: true),
+      noticeUnread: _boolish(json['noticeUnread']),
       memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
+      mentionUnreadCount: (json['mentionUnreadCount'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  static bool _boolish(Object? value, {bool defaultValue = false}) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) return value == '1' || value.toLowerCase() == 'true';
+    return defaultValue;
   }
 }
 
@@ -40,6 +63,10 @@ class GroupMessage {
     required this.messageType,
     required this.content,
     this.fileId,
+    this.replyToMessageId,
+    this.replyPreview,
+    this.mentionUserIds = const <int>[],
+    this.mentionAll = false,
     this.fileName,
     this.fileMimeType,
     this.fileSize,
@@ -55,6 +82,10 @@ class GroupMessage {
   final String messageType;
   final String content;
   final int? fileId;
+  final int? replyToMessageId;
+  final String? replyPreview;
+  final List<int> mentionUserIds;
+  final bool mentionAll;
   final String? fileName;
   final String? fileMimeType;
   final int? fileSize;
@@ -71,12 +102,26 @@ class GroupMessage {
       messageType: json['messageType']?.toString() ?? 'text',
       content: json['content']?.toString() ?? '',
       fileId: (json['fileId'] as num?)?.toInt(),
+      replyToMessageId: (json['replyToMessageId'] as num?)?.toInt(),
+      replyPreview: json['replyPreview']?.toString(),
+      mentionUserIds: (json['mentionUserIds'] as List<dynamic>? ?? const [])
+          .whereType<num>()
+          .map((item) => item.toInt())
+          .toList(),
+      mentionAll: _boolish(json['mentionAll']),
       fileName: json['fileName']?.toString(),
       fileMimeType: json['fileMimeType']?.toString(),
       fileSize: (json['fileSize'] as num?)?.toInt(),
       sentAt: json['sentAt']?.toString() ?? '',
       recallStatus: (json['recallStatus'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  static bool _boolish(Object? value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) return value == '1' || value.toLowerCase() == 'true';
+    return false;
   }
 }
 

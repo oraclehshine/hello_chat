@@ -3,11 +3,14 @@ backend/.m2repo/
 backend/*.log
 backend/*.err.log
 .env
+.env.prod
 .env.local
 .env.*.local
+.idea/
 front/dist/
 front/node_modules/
 front/*.log
 front/*.err.log
 front/*.tsbuildinfo
 **/.DS_Store
+deploy-images/*.tar

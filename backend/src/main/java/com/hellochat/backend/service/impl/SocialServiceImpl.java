@@ -21,6 +21,7 @@ import com.hellochat.backend.repository.SearchHistoryRepository;
 import com.hellochat.backend.repository.UserBlockRepository;
 import com.hellochat.backend.repository.UserPresenceRepository;
 import com.hellochat.backend.repository.UserRepository;
+import com.hellochat.backend.service.AdminDashboardService;
 import com.hellochat.backend.service.SocialService;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -47,6 +48,7 @@ public class SocialServiceImpl implements SocialService {
     private final FriendshipRepository friendshipRepository;
     private final UserBlockRepository userBlockRepository;
     private final MomentRepository momentRepository;
+    private final AdminDashboardService adminDashboardService;
 
     public SocialServiceImpl(
         UserRepository userRepository,
@@ -56,7 +58,8 @@ public class SocialServiceImpl implements SocialService {
         GroupMemberRepository groupMemberRepository,
         FriendshipRepository friendshipRepository,
         UserBlockRepository userBlockRepository,
-        MomentRepository momentRepository
+        MomentRepository momentRepository,
+        AdminDashboardService adminDashboardService
     ) {
         this.userRepository = userRepository;
         this.userPresenceRepository = userPresenceRepository;
@@ -66,6 +69,7 @@ public class SocialServiceImpl implements SocialService {
         this.friendshipRepository = friendshipRepository;
         this.userBlockRepository = userBlockRepository;
         this.momentRepository = momentRepository;
+        this.adminDashboardService = adminDashboardService;
     }
 
     @Override
@@ -83,7 +87,9 @@ public class SocialServiceImpl implements SocialService {
             presence.setLastActiveAt(LocalDateTime.now());
         }
         presence.setUpdatedAt(LocalDateTime.now());
-        return new PresenceResponse(userPresenceRepository.save(presence));
+        UserPresence saved = userPresenceRepository.save(presence);
+        adminDashboardService.recordPresence(userId, safeStatus);
+        return new PresenceResponse(saved);
     }
 
     @Override

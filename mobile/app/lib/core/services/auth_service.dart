@@ -24,11 +24,7 @@ class AuthService {
   }) async {
     final data = await _client.post(
       '/auth/register',
-      data: {
-        'email': email,
-        'password': password,
-        'captcha': captcha,
-      },
+      data: {'email': email, 'password': password, 'captcha': captcha},
     );
     final session = AuthSession.fromJson(data);
     await _sessionStore.save(session);
@@ -41,10 +37,7 @@ class AuthService {
   }) async {
     final data = await _client.post(
       '/auth/login',
-      data: {
-        'email': email,
-        'password': password,
-      },
+      data: {'email': email, 'password': password},
     );
     final session = AuthSession.fromJson(data);
     await _sessionStore.save(session);
@@ -58,12 +51,29 @@ class AuthService {
   }) async {
     await _client.post(
       '/auth/password-reset',
-      data: {
-        'email': email,
-        'captcha': captcha,
-        'newPassword': newPassword,
-      },
+      data: {'email': email, 'captcha': captcha, 'newPassword': newPassword},
     );
+  }
+
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    await _client.put(
+      '/auth/password',
+      data: {'oldPassword': oldPassword, 'newPassword': newPassword},
+    );
+  }
+
+  Future<UserProfile> updateEmail({
+    required String email,
+    required String captcha,
+  }) async {
+    final data = await _client.put(
+      '/users/me/email',
+      data: {'email': email, 'captcha': captcha},
+    );
+    return UserProfile.fromJson(data);
   }
 
   Future<void> logout() async {

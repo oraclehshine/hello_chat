@@ -1,11 +1,58 @@
 class FriendItem {
   const FriendItem({
+    this.friendshipId,
     required this.userId,
     required this.email,
     required this.nickname,
     this.avatarUrl,
     this.signature,
     this.remarkName,
+    this.friendGroup,
+    this.star = false,
+    this.createdAt,
+  });
+
+  final int? friendshipId;
+  final int userId;
+  final String email;
+  final String nickname;
+  final String? avatarUrl;
+  final String? signature;
+  final String? remarkName;
+  final String? friendGroup;
+  final bool star;
+  final String? createdAt;
+
+  factory FriendItem.fromJson(Map<String, dynamic> json) {
+    return FriendItem(
+      friendshipId: (json['friendshipId'] as num?)?.toInt(),
+      userId: (json['userId'] as num?)?.toInt() ?? 0,
+      email: json['email']?.toString() ?? '',
+      nickname: json['nickname']?.toString() ?? '',
+      avatarUrl: json['avatarUrl']?.toString(),
+      signature: json['signature']?.toString(),
+      remarkName: json['remarkName']?.toString(),
+      friendGroup: json['friendGroup']?.toString(),
+      star: _boolish(json['star']),
+      createdAt: json['createdAt']?.toString(),
+    );
+  }
+
+  static bool _boolish(Object? value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) return value == '1' || value.toLowerCase() == 'true';
+    return false;
+  }
+}
+
+class BlockedUserItem {
+  const BlockedUserItem({
+    required this.userId,
+    required this.email,
+    required this.nickname,
+    this.avatarUrl,
+    this.signature,
   });
 
   final int userId;
@@ -13,16 +60,14 @@ class FriendItem {
   final String nickname;
   final String? avatarUrl;
   final String? signature;
-  final String? remarkName;
 
-  factory FriendItem.fromJson(Map<String, dynamic> json) {
-    return FriendItem(
+  factory BlockedUserItem.fromJson(Map<String, dynamic> json) {
+    return BlockedUserItem(
       userId: (json['userId'] as num?)?.toInt() ?? 0,
       email: json['email']?.toString() ?? '',
       nickname: json['nickname']?.toString() ?? '',
       avatarUrl: json['avatarUrl']?.toString(),
       signature: json['signature']?.toString(),
-      remarkName: json['remarkName']?.toString(),
     );
   }
 }

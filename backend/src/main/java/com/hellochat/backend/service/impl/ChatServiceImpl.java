@@ -15,6 +15,7 @@ import com.hellochat.backend.repository.FriendshipRepository;
 import com.hellochat.backend.repository.PrivateChatRepository;
 import com.hellochat.backend.repository.PrivateMessageRepository;
 import com.hellochat.backend.repository.UserRepository;
+import com.hellochat.backend.service.AdminDashboardService;
 import com.hellochat.backend.service.ChatPushService;
 import com.hellochat.backend.service.ChatService;
 import java.time.LocalDateTime;
@@ -40,6 +41,7 @@ public class ChatServiceImpl implements ChatService {
     private final FileAssetRepository fileAssetRepository;
     private final FriendshipRepository friendshipRepository;
     private final ChatPushService chatPushService;
+    private final AdminDashboardService adminDashboardService;
 
     public ChatServiceImpl(
         PrivateChatRepository privateChatRepository,
@@ -47,7 +49,8 @@ public class ChatServiceImpl implements ChatService {
         UserRepository userRepository,
         FileAssetRepository fileAssetRepository,
         FriendshipRepository friendshipRepository,
-        ChatPushService chatPushService
+        ChatPushService chatPushService,
+        AdminDashboardService adminDashboardService
     ) {
         this.privateChatRepository = privateChatRepository;
         this.privateMessageRepository = privateMessageRepository;
@@ -55,6 +58,7 @@ public class ChatServiceImpl implements ChatService {
         this.fileAssetRepository = fileAssetRepository;
         this.friendshipRepository = friendshipRepository;
         this.chatPushService = chatPushService;
+        this.adminDashboardService = adminDashboardService;
     }
 
     @Override
@@ -135,6 +139,7 @@ public class ChatServiceImpl implements ChatService {
         FileAsset responseFileAsset = saved.getFileId() == null ? null : fileAssetRepository.findById(saved.getFileId()).orElse(null);
         PrivateMessageResponse response = new PrivateMessageResponse(saved, responseFileAsset);
         chatPushService.pushNewMessage(chatId, userId, response);
+        adminDashboardService.recordPrivateMessage(chatId, userId, request.getMessageType(), request.getContent());
         return response;
     }
 

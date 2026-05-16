@@ -149,29 +149,50 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 18),
                 GlassCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryBlue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.edit_outlined,
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
+                        title: const Text(
+                          '编辑个人资料',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => _showEditSheet(profile),
                       ),
-                      child: const Icon(
-                        Icons.edit_outlined,
-                        color: AppTheme.primaryBlue,
+                      const Divider(height: 18),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.lock_reset_rounded),
+                        title: const Text('修改密码'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: _showChangePasswordSheet,
                       ),
-                    ),
-                    title: const Text(
-                      '编辑个人资料',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textPrimary,
+                      const Divider(height: 18),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.alternate_email_rounded),
+                        title: const Text('更换邮箱'),
+                        subtitle: Text(profile.email),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => _showUpdateEmailSheet(profile),
                       ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => _showEditSheet(profile),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -279,13 +300,217 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _showChangePasswordSheet() {
+    final oldController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final navigator = Navigator.of(sheetContext);
+        final messenger = ScaffoldMessenger.of(sheetContext);
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+            top: 16,
+          ),
+          child: GlassCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '修改密码',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: oldController,
+                  obscureText: true,
+                  decoration: const InputDecoration(hintText: '当前密码'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newController,
+                  obscureText: true,
+                  decoration: const InputDecoration(hintText: '新密码'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmController,
+                  obscureText: true,
+                  decoration: const InputDecoration(hintText: '确认新密码'),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: () async {
+                        final newPassword = newController.text.trim();
+                        if (newPassword != confirmController.text.trim()) {
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('两次输入的新密码不一致')),
+                          );
+                          return;
+                        }
+                        try {
+                          await AppScope.of(context).authService.changePassword(
+                            oldPassword: oldController.text.trim(),
+                            newPassword: newPassword,
+                          );
+                          navigator.pop();
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('密码已更新')),
+                          );
+                        } on ApiException catch (error) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(error.message)),
+                          );
+                        }
+                      },
+                      child: const Text('保存'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showUpdateEmailSheet(UserProfile profile) {
+    final emailController = TextEditingController(text: profile.email);
+    final captchaController = TextEditingController();
+    final rootMessenger = ScaffoldMessenger.of(context);
+    final authService = AppScope.of(context).authService;
+    var sending = false;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final navigator = Navigator.of(sheetContext);
+        final messenger = ScaffoldMessenger.of(sheetContext);
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+            top: 16,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              return GlassCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '更换邮箱',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(hintText: '新邮箱'),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: captchaController,
+                            decoration: const InputDecoration(hintText: '验证码'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        OutlinedButton(
+                          onPressed: sending
+                              ? null
+                              : () async {
+                                  final email = emailController.text.trim();
+                                  if (email.isEmpty) return;
+                                  setSheetState(() => sending = true);
+                                  try {
+                                    final captcha = await authService
+                                        .sendCaptcha(email, 'modify_email');
+                                    captchaController.text = captcha;
+                                  } on ApiException catch (error) {
+                                    messenger.showSnackBar(
+                                      SnackBar(content: Text(error.message)),
+                                    );
+                                  } finally {
+                                    setSheetState(() => sending = false);
+                                  }
+                                },
+                          child: Text(sending ? '发送中' : '获取验证码'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        FilledButton(
+                          onPressed: () async {
+                            try {
+                              await authService.updateEmail(
+                                email: emailController.text.trim(),
+                                captcha: captchaController.text.trim(),
+                              );
+                              navigator.pop();
+                              if (!mounted) return;
+                              await _reload();
+                              if (!mounted) return;
+                              rootMessenger.showSnackBar(
+                                const SnackBar(content: Text('邮箱已更新')),
+                              );
+                            } on ApiException catch (error) {
+                              messenger.showSnackBar(
+                                SnackBar(content: Text(error.message)),
+                              );
+                            }
+                          },
+                          child: const Text('保存'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _changeAvatar(UserProfile profile) async {
+    final scope = AppScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final hasPermission = await _requestMediaPermission();
     if (!hasPermission) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('未授予相册权限，无法更换头像')));
+      messenger.showSnackBar(const SnackBar(content: Text('未授予相册权限，无法更换头像')));
       return;
     }
 
@@ -305,7 +530,6 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     try {
-      final scope = AppScope.of(context);
       final upload = await scope.fileService.uploadFile(
         filePath: file.path!,
         fileName: file.name,
@@ -315,19 +539,13 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
       await _reload();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('头像已更新')));
+      messenger.showSnackBar(const SnackBar(content: Text('头像已更新')));
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('头像更新失败，请稍后重试')));
+      messenger.showSnackBar(const SnackBar(content: Text('头像更新失败，请稍后重试')));
     } finally {
       if (mounted) {
         setState(() {

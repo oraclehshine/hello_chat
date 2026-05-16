@@ -34,6 +34,7 @@ import com.hellochat.backend.repository.MomentReportRepository;
 import com.hellochat.backend.repository.MomentVisibleUserRepository;
 import com.hellochat.backend.repository.NotificationRepository;
 import com.hellochat.backend.repository.UserRepository;
+import com.hellochat.backend.service.AdminDashboardService;
 import com.hellochat.backend.service.MomentService;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
@@ -71,6 +72,7 @@ public class MomentServiceImpl implements MomentService {
     private final FileAssetRepository fileAssetRepository;
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
+    private final AdminDashboardService adminDashboardService;
 
     public MomentServiceImpl(
         MomentRepository momentRepository,
@@ -83,7 +85,8 @@ public class MomentServiceImpl implements MomentService {
         NotificationRepository notificationRepository,
         FileAssetRepository fileAssetRepository,
         UserRepository userRepository,
-        FriendshipRepository friendshipRepository
+        FriendshipRepository friendshipRepository,
+        AdminDashboardService adminDashboardService
     ) {
         this.momentRepository = momentRepository;
         this.momentMediaRepository = momentMediaRepository;
@@ -96,6 +99,7 @@ public class MomentServiceImpl implements MomentService {
         this.fileAssetRepository = fileAssetRepository;
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
+        this.adminDashboardService = adminDashboardService;
     }
 
     @Override
@@ -128,6 +132,7 @@ public class MomentServiceImpl implements MomentService {
         Moment saved = momentRepository.save(moment);
         saveMedia(saved.getId(), fileIds);
         saveVisibleUsers(saved.getId(), visibleUserIds);
+        adminDashboardService.recordMomentCreated(saved.getId(), userId, saved.getContent());
         return toMomentResponse(userId, saved);
     }
 
@@ -413,6 +418,7 @@ public class MomentServiceImpl implements MomentService {
         report.setStatus(1);
         report.setCreatedAt(LocalDateTime.now());
         momentReportRepository.save(report);
+        adminDashboardService.recordMomentReported(momentId, userId);
     }
 
     @Override
@@ -445,6 +451,7 @@ public class MomentServiceImpl implements MomentService {
         report.setHandleNote(request.getHandleNote() == null ? "" : request.getHandleNote().trim());
         report.setHandledAt(LocalDateTime.now());
         momentReportRepository.save(report);
+        adminDashboardService.recordMomentReportReviewed(reportId, userId, request.getStatus());
         Moment moment = momentRepository.findById(report.getMomentId()).orElse(null);
         if (Boolean.TRUE.equals(request.getDeleteMoment()) && moment != null && moment.getDeletedAt() == null) {
             moment.setDeletedAt(LocalDateTime.now());
