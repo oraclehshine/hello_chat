@@ -1,5 +1,6 @@
 package com.hellochat.backend.dto;
 
+import com.hellochat.backend.cache.ChatSummaryCacheValue;
 import com.hellochat.backend.entity.PrivateChat;
 import com.hellochat.backend.entity.PrivateMessage;
 import java.time.LocalDateTime;
@@ -20,7 +21,7 @@ public class PrivateChatResponse {
     private final LocalDateTime updatedAt;
 
     public PrivateChatResponse(PrivateChat chat, UserProfileResponse targetUser) {
-        this(chat, targetUser, null, 0);
+        this(chat, targetUser, (PrivateMessage) null, 0);
     }
 
     public PrivateChatResponse(PrivateChat chat, UserProfileResponse targetUser, PrivateMessage lastMessage) {
@@ -37,6 +38,26 @@ public class PrivateChatResponse {
         this.lastMessageType = lastMessage == null ? null : lastMessage.getMessageType();
         this.lastMessagePreview = lastMessage == null ? null : preview(lastMessage);
         this.lastMessageAt = chat.getLastMessageAt();
+        this.unreadCount = unreadCount;
+        this.createdAt = chat.getCreatedAt();
+        this.updatedAt = chat.getUpdatedAt();
+    }
+
+    public PrivateChatResponse(
+        PrivateChat chat,
+        UserProfileResponse targetUser,
+        ChatSummaryCacheValue cachedSummary,
+        long unreadCount
+    ) {
+        this.chatId = chat.getId();
+        this.targetUserId = targetUser.getUserId();
+        this.targetEmail = targetUser.getEmail();
+        this.targetNickname = targetUser.getNickname();
+        this.targetAvatarUrl = targetUser.getAvatarUrl();
+        this.lastMessageId = cachedSummary == null ? chat.getLastMessageId() : cachedSummary.getLastMessageId();
+        this.lastMessageType = cachedSummary == null ? null : cachedSummary.getLastMessageType();
+        this.lastMessagePreview = cachedSummary == null ? null : cachedSummary.getLastMessagePreview();
+        this.lastMessageAt = cachedSummary == null ? chat.getLastMessageAt() : cachedSummary.getLastMessageAt();
         this.unreadCount = unreadCount;
         this.createdAt = chat.getCreatedAt();
         this.updatedAt = chat.getUpdatedAt();

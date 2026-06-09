@@ -1,6 +1,26 @@
-﻿spring:
+spring:
   application:
     name: hello-chat-backend
+  cloud:
+    bootstrap:
+      enabled: true
+    nacos:
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+      config:
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
+        file-extension: yaml
+    sentinel:
+      enabled: ${SENTINEL_ENABLED:false}
+      eager: false
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD:localhost:8858}
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/hello_chat}
     username: ${DB_USERNAME:postgres}
@@ -20,6 +40,17 @@
       password: ${REDIS_PASSWORD:}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: latest
+      properties:
+        spring.json.trusted.packages: com.hellochat.backend.*
   jackson:
     time-zone: Asia/Shanghai
   flyway:
@@ -41,6 +72,23 @@ hello-chat:
     access-token-seconds: ${HELLO_CHAT_ACCESS_TOKEN_SECONDS:7200}
   moderation:
     admin-user-ids: ${HELLO_CHAT_ADMIN_USER_IDS:1}
+  concurrency:
+    node-id: ${HELLO_CHAT_NODE_ID:${spring.application.name}-${random.uuid}}
+    websocket-route-ttl-seconds: ${HELLO_CHAT_WS_ROUTE_TTL_SECONDS:120}
+    websocket-kafka-enabled: ${HELLO_CHAT_WS_KAFKA_ENABLED:false}
+    websocket-dispatch-topic: ${HELLO_CHAT_WS_DISPATCH_TOPIC:hello-chat-websocket-dispatch}
+    chat-push-topic: ${HELLO_CHAT_CHAT_PUSH_TOPIC:hello-chat-chat-push}
+    event-core-pool-size: ${HELLO_CHAT_EVENT_CORE_POOL_SIZE:4}
+    event-max-pool-size: ${HELLO_CHAT_EVENT_MAX_POOL_SIZE:16}
+    event-queue-capacity: ${HELLO_CHAT_EVENT_QUEUE_CAPACITY:1000}
+  sentinel:
+    local-rules-enabled: ${HELLO_CHAT_SENTINEL_LOCAL_RULES_ENABLED:true}
+    auth-captcha-qps: ${HELLO_CHAT_SENTINEL_AUTH_CAPTCHA_QPS:2}
+    auth-login-qps: ${HELLO_CHAT_SENTINEL_AUTH_LOGIN_QPS:5}
+    chat-send-message-qps: ${HELLO_CHAT_SENTINEL_CHAT_SEND_QPS:25}
+    group-send-message-qps: ${HELLO_CHAT_SENTINEL_GROUP_SEND_QPS:40}
+    group-mention-all-qps: ${HELLO_CHAT_SENTINEL_GROUP_MENTION_ALL_QPS:3}
+    file-upload-qps: ${HELLO_CHAT_SENTINEL_FILE_UPLOAD_QPS:5}
 
 aliyun:
   oss:

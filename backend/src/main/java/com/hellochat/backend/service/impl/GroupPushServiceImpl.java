@@ -7,7 +7,7 @@ import com.hellochat.backend.dto.GroupResponse;
 import com.hellochat.backend.entity.GroupMember;
 import com.hellochat.backend.repository.GroupMemberRepository;
 import com.hellochat.backend.service.GroupPushService;
-import com.hellochat.backend.websocket.ChatWebSocketHandler;
+import com.hellochat.backend.websocket.WebSocketDispatchPublisher;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -16,16 +16,16 @@ import org.springframework.stereotype.Service;
 public class GroupPushServiceImpl implements GroupPushService {
 
     private final GroupMemberRepository groupMemberRepository;
-    private final ChatWebSocketHandler chatWebSocketHandler;
+    private final WebSocketDispatchPublisher webSocketDispatchPublisher;
     private final ObjectMapper objectMapper;
 
     public GroupPushServiceImpl(
         GroupMemberRepository groupMemberRepository,
-        ChatWebSocketHandler chatWebSocketHandler,
+        WebSocketDispatchPublisher webSocketDispatchPublisher,
         ObjectMapper objectMapper
     ) {
         this.groupMemberRepository = groupMemberRepository;
-        this.chatWebSocketHandler = chatWebSocketHandler;
+        this.webSocketDispatchPublisher = webSocketDispatchPublisher;
         this.objectMapper = objectMapper;
     }
 
@@ -64,7 +64,7 @@ public class GroupPushServiceImpl implements GroupPushService {
         message.put("userId", userId);
         message.put("payload", payload);
         try {
-            chatWebSocketHandler.push(userId, objectMapper.writeValueAsString(message));
+            webSocketDispatchPublisher.publish(userId, eventType, objectMapper.writeValueAsString(message));
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Unable to serialize websocket payload", ex);
         }

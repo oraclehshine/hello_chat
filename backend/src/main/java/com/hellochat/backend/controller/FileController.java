@@ -1,9 +1,12 @@
 package com.hellochat.backend.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.hellochat.backend.common.ApiResponse;
 import com.hellochat.backend.common.CurrentUser;
 import com.hellochat.backend.common.TokenProvider;
 import com.hellochat.backend.dto.UploadResponse;
+import com.hellochat.backend.sentinel.SentinelBlockHandlers;
+import com.hellochat.backend.sentinel.SentinelResourceNames;
 import com.hellochat.backend.service.FileStorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -29,6 +32,11 @@ public class FileController {
     }
 
     @PostMapping("/upload")
+    @SentinelResource(
+        value = SentinelResourceNames.FILE_UPLOAD,
+        blockHandlerClass = SentinelBlockHandlers.class,
+        blockHandler = "blockedFileUpload"
+    )
     public ApiResponse<UploadResponse> upload(
         HttpServletRequest request,
         @RequestParam("file") MultipartFile file,

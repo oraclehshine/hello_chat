@@ -1,5 +1,6 @@
 package com.hellochat.backend.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.hellochat.backend.common.ApiResponse;
 import com.hellochat.backend.common.CurrentUser;
 import com.hellochat.backend.common.TokenProvider;
@@ -12,6 +13,8 @@ import com.hellochat.backend.dto.RegisterRequest;
 import com.hellochat.backend.dto.ResetPasswordRequest;
 import com.hellochat.backend.dto.UpdateProfileRequest;
 import com.hellochat.backend.dto.UpdateEmailRequest;
+import com.hellochat.backend.sentinel.SentinelBlockHandlers;
+import com.hellochat.backend.sentinel.SentinelResourceNames;
 import com.hellochat.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -36,11 +39,21 @@ public class AuthController {
     }
 
     @PostMapping("/email-captcha")
+    @SentinelResource(
+        value = SentinelResourceNames.AUTH_SEND_CAPTCHA,
+        blockHandlerClass = SentinelBlockHandlers.class,
+        blockHandler = "blockedSendCaptcha"
+    )
     public ApiResponse<String> sendCaptcha(@Valid @RequestBody CaptchaRequest request) {
         return ApiResponse.success(authService.sendCaptcha(request));
     }
 
     @GetMapping("/email-captcha")
+    @SentinelResource(
+        value = SentinelResourceNames.AUTH_SEND_CAPTCHA_GET,
+        blockHandlerClass = SentinelBlockHandlers.class,
+        blockHandler = "blockedSendCaptchaByGet"
+    )
     public ApiResponse<String> sendCaptchaByGet(
         @RequestParam("email") String email,
         @RequestParam(value = "scene", defaultValue = "register") String scene
@@ -57,6 +70,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @SentinelResource(
+        value = SentinelResourceNames.AUTH_LOGIN,
+        blockHandlerClass = SentinelBlockHandlers.class,
+        blockHandler = "blockedLogin"
+    )
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.login(request));
     }

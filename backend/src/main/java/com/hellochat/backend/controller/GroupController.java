@@ -1,5 +1,6 @@
 package com.hellochat.backend.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.hellochat.backend.common.ApiResponse;
 import com.hellochat.backend.common.CurrentUser;
 import com.hellochat.backend.common.TokenProvider;
@@ -19,6 +20,8 @@ import com.hellochat.backend.dto.TransferGroupOwnerRequest;
 import com.hellochat.backend.dto.UpdateGroupNoticeRequest;
 import com.hellochat.backend.dto.UpdateGroupNicknameRequest;
 import com.hellochat.backend.dto.UpdateGroupRequest;
+import com.hellochat.backend.sentinel.SentinelBlockHandlers;
+import com.hellochat.backend.sentinel.SentinelResourceNames;
 import com.hellochat.backend.service.GroupService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -214,6 +217,11 @@ public class GroupController {
     }
 
     @PostMapping("/{groupId}/messages")
+    @SentinelResource(
+        value = SentinelResourceNames.GROUP_SEND_MESSAGE,
+        blockHandlerClass = SentinelBlockHandlers.class,
+        blockHandler = "blockedGroupSendMessage"
+    )
     public ApiResponse<GroupMessageResponse> sendMessage(
         HttpServletRequest request,
         @PathVariable Long groupId,
@@ -243,6 +251,11 @@ public class GroupController {
     }
 
     @PostMapping("/{groupId}/messages/mention-all")
+    @SentinelResource(
+        value = SentinelResourceNames.GROUP_SEND_MENTION_ALL,
+        blockHandlerClass = SentinelBlockHandlers.class,
+        blockHandler = "blockedGroupMentionAll"
+    )
     public ApiResponse<GroupMessageResponse> sendMentionAllMessage(
         HttpServletRequest request,
         @PathVariable Long groupId,

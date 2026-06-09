@@ -1,5 +1,6 @@
 package com.hellochat.backend.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
 import com.hellochat.backend.common.ApiResponse;
 import com.hellochat.backend.common.CurrentUser;
 import com.hellochat.backend.common.TokenProvider;
@@ -9,6 +10,8 @@ import com.hellochat.backend.dto.PrivateChatResponse;
 import com.hellochat.backend.dto.PrivateMessageResponse;
 import com.hellochat.backend.dto.SendMessageRequest;
 import com.hellochat.backend.dto.TypingStatusRequest;
+import com.hellochat.backend.sentinel.SentinelBlockHandlers;
+import com.hellochat.backend.sentinel.SentinelResourceNames;
 import com.hellochat.backend.service.ChatService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -58,6 +61,11 @@ public class ChatController {
     }
 
     @PostMapping("/chats/{chatId}/messages")
+    @SentinelResource(
+        value = SentinelResourceNames.CHAT_SEND_MESSAGE,
+        blockHandlerClass = SentinelBlockHandlers.class,
+        blockHandler = "blockedChatSendMessage"
+    )
     public ApiResponse<PrivateMessageResponse> sendMessage(
         HttpServletRequest request,
         @PathVariable Long chatId,

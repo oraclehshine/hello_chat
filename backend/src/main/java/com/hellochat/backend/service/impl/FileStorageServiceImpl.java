@@ -6,7 +6,7 @@ import com.hellochat.backend.config.AliyunOssProperties;
 import com.hellochat.backend.dto.UploadResponse;
 import com.hellochat.backend.entity.FileAsset;
 import com.hellochat.backend.repository.FileAssetRepository;
-import com.hellochat.backend.service.AdminDashboardService;
+import com.hellochat.backend.service.AdminDashboardAsyncService;
 import com.hellochat.backend.service.FileStorageService;
 import java.io.IOException;
 import java.net.URI;
@@ -37,18 +37,18 @@ public class FileStorageServiceImpl implements FileStorageService {
     private final ObjectProvider<OSS> ossClientProvider;
     private final AliyunOssProperties properties;
     private final FileAssetRepository fileAssetRepository;
-    private final AdminDashboardService adminDashboardService;
+    private final AdminDashboardAsyncService adminDashboardAsyncService;
 
     public FileStorageServiceImpl(
         ObjectProvider<OSS> ossClientProvider,
         AliyunOssProperties properties,
         FileAssetRepository fileAssetRepository,
-        AdminDashboardService adminDashboardService
+        AdminDashboardAsyncService adminDashboardAsyncService
     ) {
         this.ossClientProvider = ossClientProvider;
         this.properties = properties;
         this.fileAssetRepository = fileAssetRepository;
-        this.adminDashboardService = adminDashboardService;
+        this.adminDashboardAsyncService = adminDashboardAsyncService;
     }
 
     @Override
@@ -122,7 +122,12 @@ public class FileStorageServiceImpl implements FileStorageService {
         asset.setFileSize(file.getSize());
         asset.setScene(safeScene);
         FileAsset saved = fileAssetRepository.save(asset);
-        adminDashboardService.recordFileUpload(uploaderId, saved.getId(), safeScene, saved.getFileSize() == null ? 0L : saved.getFileSize());
+        adminDashboardAsyncService.recordFileUpload(
+            uploaderId,
+            saved.getId(),
+            safeScene,
+            saved.getFileSize() == null ? 0L : saved.getFileSize()
+        );
 
         return new UploadResponse(
             saved.getId(),

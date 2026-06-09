@@ -1,5 +1,7 @@
 package com.hellochat.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hellochat.backend.entity.FileAsset;
 import com.hellochat.backend.entity.PrivateMessage;
 import java.time.LocalDateTime;
@@ -23,6 +25,39 @@ public class PrivateMessageResponse {
 
     public PrivateMessageResponse(PrivateMessage message) {
         this(message, null);
+    }
+
+    @JsonCreator
+    public PrivateMessageResponse(
+        @JsonProperty("messageId") Long messageId,
+        @JsonProperty("chatId") Long chatId,
+        @JsonProperty("senderId") Long senderId,
+        @JsonProperty("messageType") String messageType,
+        @JsonProperty("content") String content,
+        @JsonProperty("fileId") Long fileId,
+        @JsonProperty("fileName") String fileName,
+        @JsonProperty("fileMimeType") String fileMimeType,
+        @JsonProperty("fileSize") Long fileSize,
+        @JsonProperty("recallStatus") Integer recallStatus,
+        @JsonProperty("messageStatus") Integer messageStatus,
+        @JsonProperty("sentAt") LocalDateTime sentAt,
+        @JsonProperty("updatedAt") LocalDateTime updatedAt,
+        @JsonProperty("pinnedAt") LocalDateTime pinnedAt
+    ) {
+        this.messageId = messageId;
+        this.chatId = chatId;
+        this.senderId = senderId;
+        this.messageType = messageType;
+        this.content = content;
+        this.fileId = fileId;
+        this.fileName = fileName;
+        this.fileMimeType = fileMimeType;
+        this.fileSize = fileSize;
+        this.recallStatus = recallStatus;
+        this.messageStatus = messageStatus;
+        this.sentAt = sentAt;
+        this.updatedAt = updatedAt;
+        this.pinnedAt = pinnedAt;
     }
 
     public PrivateMessageResponse(PrivateMessage message, FileAsset fileAsset) {

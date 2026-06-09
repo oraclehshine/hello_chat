@@ -30,7 +30,7 @@ import com.hellochat.backend.repository.GroupMessageRepository;
 import com.hellochat.backend.repository.GroupMessageMentionRepository;
 import com.hellochat.backend.repository.GroupNotificationRepository;
 import com.hellochat.backend.repository.UserRepository;
-import com.hellochat.backend.service.AdminDashboardService;
+import com.hellochat.backend.service.AdminDashboardAsyncService;
 import com.hellochat.backend.service.GroupPushService;
 import com.hellochat.backend.service.GroupService;
 import java.time.LocalDateTime;
@@ -61,7 +61,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupMessageMentionRepository groupMessageMentionRepository;
     private final GroupNotificationRepository groupNotificationRepository;
     private final GroupPushService groupPushService;
-    private final AdminDashboardService adminDashboardService;
+    private final AdminDashboardAsyncService adminDashboardAsyncService;
 
     public GroupServiceImpl(
         ChatGroupRepository chatGroupRepository,
@@ -74,7 +74,7 @@ public class GroupServiceImpl implements GroupService {
         GroupMessageMentionRepository groupMessageMentionRepository,
         GroupNotificationRepository groupNotificationRepository,
         GroupPushService groupPushService,
-        AdminDashboardService adminDashboardService
+        AdminDashboardAsyncService adminDashboardAsyncService
     ) {
         this.chatGroupRepository = chatGroupRepository;
         this.groupMemberRepository = groupMemberRepository;
@@ -86,7 +86,7 @@ public class GroupServiceImpl implements GroupService {
         this.groupMessageMentionRepository = groupMessageMentionRepository;
         this.groupNotificationRepository = groupNotificationRepository;
         this.groupPushService = groupPushService;
-        this.adminDashboardService = adminDashboardService;
+        this.adminDashboardAsyncService = adminDashboardAsyncService;
     }
 
     @Override
@@ -134,7 +134,7 @@ public class GroupServiceImpl implements GroupService {
         GroupResponse response = toGroupResponse(savedGroup);
         saveNotification(savedGroup.getId(), userId, null, "group:created", "Group created");
         groupPushService.pushGroupUpdated(savedGroup.getId(), "group:created", response);
-        adminDashboardService.recordGroupCreated(savedGroup.getId(), userId, savedGroup.getName());
+        adminDashboardAsyncService.recordGroupCreated(savedGroup.getId(), userId, savedGroup.getName());
         return response;
     }
 
@@ -405,7 +405,7 @@ public class GroupServiceImpl implements GroupService {
             : groupMessageRepository.findById(saved.getReplyToMessageId()).orElse(null);
         GroupMessageResponse response = new GroupMessageResponse(saved, requireUser(userId), fileAsset, replyMessage, List.copyOf(mentionUserIds));
         groupPushService.pushNewMessage(groupId, response);
-        adminDashboardService.recordGroupMessage(groupId, userId, request.getMessageType(), request.getContent());
+        adminDashboardAsyncService.recordGroupMessage(groupId, userId, request.getMessageType(), request.getContent());
         return response;
     }
 

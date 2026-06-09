@@ -1,5 +1,7 @@
 package com.hellochat.backend.service.impl;
 
+import com.hellochat.backend.cache.ChatHotCacheService;
+import com.hellochat.backend.cache.ChatSummaryCacheValue;
 import com.hellochat.backend.dto.CreatePrivateChatRequest;
 import com.hellochat.backend.dto.PageResponse;
 import com.hellochat.backend.dto.PrivateChatResponse;
@@ -15,7 +17,7 @@ import com.hellochat.backend.repository.FriendshipRepository;
 import com.hellochat.backend.repository.PrivateChatRepository;
 import com.hellochat.backend.repository.PrivateMessageRepository;
 import com.hellochat.backend.repository.UserRepository;
-import com.hellochat.backend.service.AdminDashboardService;
+import com.hellochat.backend.service.AdminDashboardAsyncService;
 import com.hellochat.backend.service.ChatPushService;
 import com.hellochat.backend.service.ChatService;
 import java.time.LocalDateTime;
@@ -41,7 +43,8 @@ public class ChatServiceImpl implements ChatService {
     private final FileAssetRepository fileAssetRepository;
     private final FriendshipRepository friendshipRepository;
     private final ChatPushService chatPushService;
-    private final AdminDashboardService adminDashboardService;
+    private final AdminDashboardAsyncService adminDashboardAsyncService;
+    private final ChatHotCacheService chatHotCacheService;
 
     public ChatServiceImpl(
         PrivateChatRepository privateChatRepository,
@@ -50,7 +53,8 @@ public class ChatServiceImpl implements ChatService {
         FileAssetRepository fileAssetRepository,
         FriendshipRepository friendshipRepository,
         ChatPushService chatPushService,
-        AdminDashboardService adminDashboardService
+        AdminDashboardAsyncService adminDashboardAsyncService,
+        ChatHotCacheService chatHotCacheService
     ) {
         this.privateChatRepository = privateChatRepository;
         this.privateMessageRepository = privateMessageRepository;
@@ -58,7 +62,8 @@ public class ChatServiceImpl implements ChatService {
         this.fileAssetRepository = fileAssetRepository;
         this.friendshipRepository = friendshipRepository;
         this.chatPushService = chatPushService;
-        this.adminDashboardService = adminDashboardService;
+        this.adminDashboardAsyncService = adminDashboardAsyncService;
+        this.chatHotCacheService = chatHotCacheService;
     }
 
     @Override
@@ -138,8 +143,14 @@ public class ChatServiceImpl implements ChatService {
         privateChatRepository.save(chat);
         FileAsset responseFileAsset = saved.getFileId() == null ? null : fileAssetRepository.findById(saved.getFileId()).orElse(null);
         PrivateMessageResponse response = new PrivateMessageResponse(saved, responseFileAsset);
+        Long targetUserId = targetUserId(chat, userId);
+        String preview = preview(saved);
+        chatHotCacheService.cacheSummary(userId, chatId, saved.getId(), saved.getMessageType(), preview, saved.getSentAt());
+        chatHotCacheService.cacheSummary(targetUserId, chatId, saved.getId(), saved.getMessageType(), preview, saved.getSentAt());
+        chatHotCacheService.resetUnreadCount(userId, chatId);
+        chatHotCacheService.incrementUnreadCount(targetUserId, chatId);
         chatPushService.pushNewMessage(chatId, userId, response);
-        adminDashboardService.recordPrivateMessage(chatId, userId, request.getMessageType(), request.getContent());
+        adminDashboardAsyncService.recordPrivateMessage(chatId, userId, request.getMessageType(), request.getContent());
         return response;
     }
 
@@ -216,6 +227,7 @@ public class ChatServiceImpl implements ChatService {
             PrivateMessage.STATUS_READ,
             LocalDateTime.now()
         );
+        chatHotCacheService.resetUnreadCount(userId, chatId);
         if (updated > 0) {
             Long lastReadMessageId = privateMessageRepository
                 .findFirstByChatIdAndSenderIdNotAndDeletedAtIsNullOrderBySentAtDesc(chatId, userId)
@@ -263,15 +275,28 @@ public class ChatServiceImpl implements ChatService {
 
     private PrivateChatResponse toChatResponse(Long currentUserId, PrivateChat chat) {
         Long targetUserId = chat.getUserAId().equals(currentUserId) ? chat.getUserBId() : chat.getUserAId();
+        long unreadCount = chatHotCacheService.getUnreadCount(currentUserId, chat.getId());
+        if (unreadCount < 0) {
+            unreadCount = privateMessageRepository.countByChatIdAndSenderIdNotAndMessageStatusAndDeletedAtIsNull(
+                chat.getId(),
+                currentUserId,
+                PrivateMessage.STATUS_SENT
+            );
+            chatHotCacheService.setUnreadCount(currentUserId, chat.getId(), unreadCount);
+        }
+        ChatSummaryCacheValue cachedSummary = chatHotCacheService.getSummary(currentUserId, chat.getId()).orElse(null);
+        if (cachedSummary != null && cachedSummary.getLastMessageId() != null) {
+            return new PrivateChatResponse(
+                chat,
+                new UserProfileResponse(requireUser(targetUserId)),
+                cachedSummary,
+                unreadCount
+            );
+        }
         PrivateMessage lastMessage = null;
         if (chat.getLastMessageId() != null) {
             lastMessage = privateMessageRepository.findById(chat.getLastMessageId()).orElse(null);
         }
-        long unreadCount = privateMessageRepository.countByChatIdAndSenderIdNotAndMessageStatusAndDeletedAtIsNull(
-            chat.getId(),
-            currentUserId,
-            PrivateMessage.STATUS_SENT
-        );
         return new PrivateChatResponse(chat, new UserProfileResponse(requireUser(targetUserId)), lastMessage, unreadCount);
     }
 
@@ -308,5 +333,23 @@ public class ChatServiceImpl implements ChatService {
                 message.getFileId() == null ? null : fileAssets.get(message.getFileId())
             ))
             .toList();
+    }
+
+    private Long targetUserId(PrivateChat chat, Long currentUserId) {
+        return chat.getUserAId().equals(currentUserId) ? chat.getUserBId() : chat.getUserAId();
+    }
+
+    private String preview(PrivateMessage message) {
+        if (message.getRecallStatus() != null && message.getRecallStatus() == PrivateMessage.RECALL_RECALLED) {
+            return "Message recalled";
+        }
+        if ("image".equals(message.getMessageType())) {
+            return "[Image]";
+        }
+        if ("file".equals(message.getMessageType())) {
+            return "[File]";
+        }
+        String content = message.getContent() == null ? "" : message.getContent().trim();
+        return content.length() > 60 ? content.substring(0, 60) + "..." : content;
     }
 }
