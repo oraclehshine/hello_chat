@@ -1,72 +1,62 @@
 package com.hellochat.backend.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hellochat.backend.config.HighConcurrencyProperties;
 import com.hellochat.backend.dto.GroupMessageResponse;
 import com.hellochat.backend.dto.GroupResponse;
-import com.hellochat.backend.entity.GroupMember;
-import com.hellochat.backend.repository.GroupMemberRepository;
 import com.hellochat.backend.service.GroupPushService;
-import com.hellochat.backend.websocket.WebSocketDispatchPublisher;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import com.hellochat.backend.service.event.GroupPushEvent;
+import java.util.UUID;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class GroupPushServiceImpl implements GroupPushService {
 
-    private final GroupMemberRepository groupMemberRepository;
-    private final WebSocketDispatchPublisher webSocketDispatchPublisher;
-    private final ObjectMapper objectMapper;
+    private final KafkaTemplate<String, GroupPushEvent> kafkaTemplate;
+    private final HighConcurrencyProperties properties;
 
     public GroupPushServiceImpl(
-        GroupMemberRepository groupMemberRepository,
-        WebSocketDispatchPublisher webSocketDispatchPublisher,
-        ObjectMapper objectMapper
+        KafkaTemplate<String, GroupPushEvent> kafkaTemplate,
+        HighConcurrencyProperties properties
     ) {
-        this.groupMemberRepository = groupMemberRepository;
-        this.webSocketDispatchPublisher = webSocketDispatchPublisher;
-        this.objectMapper = objectMapper;
+        this.kafkaTemplate = kafkaTemplate;
+        this.properties = properties;
     }
 
     @Override
     public void pushNewMessage(Long groupId, GroupMessageResponse message) {
-        pushToGroup(groupId, "group:message:new", message);
+        GroupPushEvent event = new GroupPushEvent();
+        event.setEventId(UUID.randomUUID().toString());
+        event.setType(GroupPushEvent.TYPE_NEW_MESSAGE);
+        event.setGroupId(groupId);
+        event.setActorUserId(message == null ? null : message.getSenderId());
+        event.setMessage(message);
+        publish(groupId, event);
     }
 
     @Override
     public void pushMessageUpdated(Long groupId, Long messageId, String eventType) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("groupId", groupId);
-        payload.put("messageId", messageId);
-        payload.put("eventType", eventType);
-        pushToGroup(groupId, "group:message:update", payload);
+        GroupPushEvent event = new GroupPushEvent();
+        event.setEventId(UUID.randomUUID().toString());
+        event.setType(GroupPushEvent.TYPE_MESSAGE_UPDATED);
+        event.setGroupId(groupId);
+        event.setMessageId(messageId);
+        event.setEventType(eventType);
+        publish(groupId, event);
     }
 
     @Override
     public void pushGroupUpdated(Long groupId, String eventType, GroupResponse group) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("eventType", eventType);
-        payload.put("group", group);
-        pushToGroup(groupId, "group:update", payload);
+        GroupPushEvent event = new GroupPushEvent();
+        event.setEventId(UUID.randomUUID().toString());
+        event.setType(GroupPushEvent.TYPE_GROUP_UPDATED);
+        event.setGroupId(groupId);
+        event.setEventType(eventType);
+        event.setGroup(group);
+        publish(groupId, event);
     }
 
-    private void pushToGroup(Long groupId, String eventType, Object payload) {
-        groupMemberRepository.findByGroupIdAndLeftAtIsNullAndStatusOrderByRoleDescJoinedAtAsc(
-            groupId,
-            GroupMember.STATUS_ACTIVE
-        ).forEach(member -> push(member.getUserId(), eventType, payload));
-    }
-
-    private void push(Long userId, String eventType, Object payload) {
-        Map<String, Object> message = new LinkedHashMap<>();
-        message.put("eventType", eventType);
-        message.put("userId", userId);
-        message.put("payload", payload);
-        try {
-            webSocketDispatchPublisher.publish(userId, eventType, objectMapper.writeValueAsString(message));
-        } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Unable to serialize websocket payload", ex);
-        }
+    private void publish(Long groupId, GroupPushEvent event) {
+        kafkaTemplate.send(properties.getGroupPushTopic(), String.valueOf(groupId), event);
     }
 }

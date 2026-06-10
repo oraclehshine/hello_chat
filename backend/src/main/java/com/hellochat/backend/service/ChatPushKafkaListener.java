@@ -1,5 +1,6 @@
 package com.hellochat.backend.service;
 
+import com.hellochat.backend.cache.KafkaEventDedupService;
 import com.hellochat.backend.service.event.ChatPushEvent;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -8,9 +9,14 @@ import org.springframework.stereotype.Component;
 public class ChatPushKafkaListener {
 
     private final LocalChatPushDispatcher localChatPushDispatcher;
+    private final KafkaEventDedupService kafkaEventDedupService;
 
-    public ChatPushKafkaListener(LocalChatPushDispatcher localChatPushDispatcher) {
+    public ChatPushKafkaListener(
+        LocalChatPushDispatcher localChatPushDispatcher,
+        KafkaEventDedupService kafkaEventDedupService
+    ) {
         this.localChatPushDispatcher = localChatPushDispatcher;
+        this.kafkaEventDedupService = kafkaEventDedupService;
     }
 
     @KafkaListener(
@@ -19,6 +25,9 @@ public class ChatPushKafkaListener {
     )
     public void consume(ChatPushEvent event) {
         if (event == null || event.getType() == null) {
+            return;
+        }
+        if (!kafkaEventDedupService.shouldProcess("chat-push", event.getEventId())) {
             return;
         }
         switch (event.getType()) {

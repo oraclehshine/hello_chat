@@ -1,6 +1,7 @@
 package com.hellochat.backend.websocket;
 
 import com.hellochat.backend.config.HighConcurrencyProperties;
+import java.util.UUID;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,7 @@ public class KafkaWebSocketDispatchPublisher implements WebSocketDispatchPublish
     @Override
     public void publish(Long userId, String eventType, String payload) {
         WebSocketDispatchEvent event = new WebSocketDispatchEvent(
+            UUID.randomUUID().toString(),
             userId,
             eventType,
             payload,

@@ -1,23 +1,22 @@
 package com.hellochat.backend.service.event;
 
-import com.hellochat.backend.dto.PrivateMessageResponse;
+import com.hellochat.backend.dto.GroupMessageResponse;
+import com.hellochat.backend.dto.GroupResponse;
 
-public class ChatPushEvent {
+public class GroupPushEvent {
 
     public static final String TYPE_NEW_MESSAGE = "new_message";
     public static final String TYPE_MESSAGE_UPDATED = "message_updated";
-    public static final String TYPE_READ_RECEIPT = "read_receipt";
-    public static final String TYPE_TYPING_STATUS = "typing_status";
+    public static final String TYPE_GROUP_UPDATED = "group_updated";
 
     private String eventId;
     private String type;
-    private Long chatId;
+    private Long groupId;
     private Long actorUserId;
     private Long messageId;
-    private Long lastReadMessageId;
     private String eventType;
-    private Boolean typing;
-    private PrivateMessageResponse message;
+    private GroupMessageResponse message;
+    private GroupResponse group;
 
     public String getEventId() {
         return eventId;
@@ -35,12 +34,12 @@ public class ChatPushEvent {
         this.type = type;
     }
 
-    public Long getChatId() {
-        return chatId;
+    public Long getGroupId() {
+        return groupId;
     }
 
-    public void setChatId(Long chatId) {
-        this.chatId = chatId;
+    public void setGroupId(Long groupId) {
+        this.groupId = groupId;
     }
 
     public Long getActorUserId() {
@@ -59,14 +58,6 @@ public class ChatPushEvent {
         this.messageId = messageId;
     }
 
-    public Long getLastReadMessageId() {
-        return lastReadMessageId;
-    }
-
-    public void setLastReadMessageId(Long lastReadMessageId) {
-        this.lastReadMessageId = lastReadMessageId;
-    }
-
     public String getEventType() {
         return eventType;
     }
@@ -75,19 +66,19 @@ public class ChatPushEvent {
         this.eventType = eventType;
     }
 
-    public Boolean getTyping() {
-        return typing;
-    }
-
-    public void setTyping(Boolean typing) {
-        this.typing = typing;
-    }
-
-    public PrivateMessageResponse getMessage() {
+    public GroupMessageResponse getMessage() {
         return message;
     }
 
-    public void setMessage(PrivateMessageResponse message) {
+    public void setMessage(GroupMessageResponse message) {
         this.message = message;
+    }
+
+    public GroupResponse getGroup() {
+        return group;
+    }
+
+    public void setGroup(GroupResponse group) {
+        this.group = group;
     }
 }

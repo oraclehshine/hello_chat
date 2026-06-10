@@ -1,5 +1,7 @@
 package com.hellochat.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hellochat.backend.entity.FileAsset;
 import com.hellochat.backend.entity.GroupMessage;
 import com.hellochat.backend.entity.User;
@@ -29,6 +31,47 @@ public class GroupMessageResponse {
 
     public GroupMessageResponse(GroupMessage message, User sender, FileAsset fileAsset) {
         this(message, sender, fileAsset, null, List.of());
+    }
+
+    @JsonCreator
+    public GroupMessageResponse(
+        @JsonProperty("messageId") Long messageId,
+        @JsonProperty("groupId") Long groupId,
+        @JsonProperty("senderId") Long senderId,
+        @JsonProperty("senderNickname") String senderNickname,
+        @JsonProperty("senderAvatarUrl") String senderAvatarUrl,
+        @JsonProperty("messageType") String messageType,
+        @JsonProperty("content") String content,
+        @JsonProperty("fileId") Long fileId,
+        @JsonProperty("replyToMessageId") Long replyToMessageId,
+        @JsonProperty("replyPreview") String replyPreview,
+        @JsonProperty("mentionUserIds") List<Long> mentionUserIds,
+        @JsonProperty("fileName") String fileName,
+        @JsonProperty("fileMimeType") String fileMimeType,
+        @JsonProperty("fileSize") Long fileSize,
+        @JsonProperty("mentionAll") Integer mentionAll,
+        @JsonProperty("recallStatus") Integer recallStatus,
+        @JsonProperty("sentAt") LocalDateTime sentAt,
+        @JsonProperty("updatedAt") LocalDateTime updatedAt
+    ) {
+        this.messageId = messageId;
+        this.groupId = groupId;
+        this.senderId = senderId;
+        this.senderNickname = senderNickname;
+        this.senderAvatarUrl = senderAvatarUrl;
+        this.messageType = messageType;
+        this.content = content;
+        this.fileId = fileId;
+        this.replyToMessageId = replyToMessageId;
+        this.replyPreview = replyPreview;
+        this.mentionUserIds = mentionUserIds == null ? List.of() : mentionUserIds;
+        this.fileName = fileName;
+        this.fileMimeType = fileMimeType;
+        this.fileSize = fileSize;
+        this.mentionAll = mentionAll;
+        this.recallStatus = recallStatus;
+        this.sentAt = sentAt;
+        this.updatedAt = updatedAt;
     }
 
     public GroupMessageResponse(

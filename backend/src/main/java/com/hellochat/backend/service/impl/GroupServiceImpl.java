@@ -13,6 +13,7 @@ import com.hellochat.backend.dto.SendMessageRequest;
 import com.hellochat.backend.dto.UpdateGroupNoticeRequest;
 import com.hellochat.backend.dto.UpdateGroupRequest;
 import com.hellochat.backend.dto.UpdateGroupNicknameRequest;
+import com.hellochat.backend.cache.GroupHotCacheService;
 import com.hellochat.backend.entity.ChatGroup;
 import com.hellochat.backend.entity.FileAsset;
 import com.hellochat.backend.entity.GroupJoinRequest;
@@ -62,6 +63,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupNotificationRepository groupNotificationRepository;
     private final GroupPushService groupPushService;
     private final AdminDashboardAsyncService adminDashboardAsyncService;
+    private final GroupHotCacheService groupHotCacheService;
 
     public GroupServiceImpl(
         ChatGroupRepository chatGroupRepository,
@@ -74,7 +76,8 @@ public class GroupServiceImpl implements GroupService {
         GroupMessageMentionRepository groupMessageMentionRepository,
         GroupNotificationRepository groupNotificationRepository,
         GroupPushService groupPushService,
-        AdminDashboardAsyncService adminDashboardAsyncService
+        AdminDashboardAsyncService adminDashboardAsyncService,
+        GroupHotCacheService groupHotCacheService
     ) {
         this.chatGroupRepository = chatGroupRepository;
         this.groupMemberRepository = groupMemberRepository;
@@ -87,6 +90,7 @@ public class GroupServiceImpl implements GroupService {
         this.groupNotificationRepository = groupNotificationRepository;
         this.groupPushService = groupPushService;
         this.adminDashboardAsyncService = adminDashboardAsyncService;
+        this.groupHotCacheService = groupHotCacheService;
     }
 
     @Override
@@ -130,6 +134,9 @@ public class GroupServiceImpl implements GroupService {
             member.setJoinedAt(LocalDateTime.now());
             member.setStatus(GroupMember.STATUS_ACTIVE);
             groupMemberRepository.save(member);
+            groupHotCacheService.resetUnreadCount(memberId, savedGroup.getId());
+            groupHotCacheService.resetMentionUnreadCount(memberId, savedGroup.getId());
+            groupHotCacheService.setNoticeUnread(memberId, savedGroup.getId(), false);
         }
         GroupResponse response = toGroupResponse(savedGroup);
         saveNotification(savedGroup.getId(), userId, null, "group:created", "Group created");
@@ -181,6 +188,9 @@ public class GroupServiceImpl implements GroupService {
             group.setUpdatedAt(LocalDateTime.now());
             chatGroupRepository.save(group);
             saveNotification(group.getId(), userId, userId, "group:member_joined", "Member joined by invite link");
+            groupHotCacheService.resetUnreadCount(userId, group.getId());
+            groupHotCacheService.resetMentionUnreadCount(userId, group.getId());
+            groupHotCacheService.setNoticeUnread(userId, group.getId(), false);
             groupPushService.pushGroupUpdated(group.getId(), "group:member_joined", toGroupResponse(group));
         }
         return toGroupResponse(group);
@@ -314,6 +324,8 @@ public class GroupServiceImpl implements GroupService {
         GroupMember member = requireActiveMember(userId, groupId);
         member.setLastReadAt(LocalDateTime.now());
         groupMemberRepository.save(member);
+        groupHotCacheService.resetUnreadCount(userId, groupId);
+        groupHotCacheService.resetMentionUnreadCount(userId, groupId);
     }
 
     @Override
@@ -404,6 +416,9 @@ public class GroupServiceImpl implements GroupService {
             ? null
             : groupMessageRepository.findById(saved.getReplyToMessageId()).orElse(null);
         GroupMessageResponse response = new GroupMessageResponse(saved, requireUser(userId), fileAsset, replyMessage, List.copyOf(mentionUserIds));
+        groupHotCacheService.cacheSummary(userId, groupId, saved.getId(), saved.getMessageType(), buildGroupMessagePreview(saved), saved.getSentAt());
+        groupHotCacheService.resetUnreadCount(userId, groupId);
+        groupHotCacheService.resetMentionUnreadCount(userId, groupId);
         groupPushService.pushNewMessage(groupId, response);
         adminDashboardAsyncService.recordGroupMessage(groupId, userId, request.getMessageType(), request.getContent());
         return response;
@@ -466,6 +481,9 @@ public class GroupServiceImpl implements GroupService {
                 continue;
             }
             addMemberEntity(group, memberId);
+            groupHotCacheService.resetUnreadCount(memberId, groupId);
+            groupHotCacheService.resetMentionUnreadCount(memberId, groupId);
+            groupHotCacheService.setNoticeUnread(memberId, groupId, false);
         }
         group.setUpdatedAt(LocalDateTime.now());
         chatGroupRepository.save(group);
@@ -506,6 +524,12 @@ public class GroupServiceImpl implements GroupService {
         group.setUpdatedAt(LocalDateTime.now());
         GroupResponse response = toGroupResponse(chatGroupRepository.save(group));
         saveNotification(groupId, userId, null, "group:notice_updated", "Group announcement updated");
+        groupMemberRepository.findByGroupIdAndLeftAtIsNullAndStatusOrderByRoleDescJoinedAtAsc(groupId, GroupMember.STATUS_ACTIVE)
+            .forEach(member -> groupHotCacheService.setNoticeUnread(
+                member.getUserId(),
+                groupId,
+                !member.getUserId().equals(userId)
+            ));
         groupPushService.pushGroupUpdated(groupId, "group:notice_updated", response);
         return response;
     }
@@ -516,6 +540,7 @@ public class GroupServiceImpl implements GroupService {
         GroupMember member = requireActiveMember(userId, groupId);
         member.setNoticeReadAt(LocalDateTime.now());
         groupMemberRepository.save(member);
+        groupHotCacheService.setNoticeUnread(userId, groupId, false);
         return getNoticeReadStats(userId, groupId);
     }
 
@@ -801,18 +826,31 @@ public class GroupServiceImpl implements GroupService {
 
     private GroupResponse toGroupResponse(ChatGroup group, GroupMember member) {
         long memberCount = groupMemberRepository.countByGroupIdAndLeftAtIsNullAndStatus(group.getId(), GroupMember.STATUS_ACTIVE);
-        long unreadCount = member.getLastReadAt() == null
-            ? groupMessageRepository.countByGroupIdAndSenderIdNotAndDeletedAtIsNull(group.getId(), member.getUserId())
-            : groupMessageRepository.countByGroupIdAndSenderIdNotAndDeletedAtIsNullAndSentAtAfter(
-                group.getId(),
-                member.getUserId(),
-                member.getLastReadAt()
-            );
-        long mentionUnreadCount = member.getLastReadAt() == null
-            ? groupMessageRepository.countUnreadMentions(group.getId(), member.getUserId())
-            : groupMessageRepository.countUnreadMentionsAfter(group.getId(), member.getUserId(), member.getLastReadAt());
-        boolean noticeUnread = group.getNoticeUpdatedAt() != null
-            && (member.getNoticeReadAt() == null || member.getNoticeReadAt().isBefore(group.getNoticeUpdatedAt()));
+        long unreadCount = groupHotCacheService.getUnreadCount(member.getUserId(), group.getId());
+        if (unreadCount < 0L) {
+            unreadCount = member.getLastReadAt() == null
+                ? groupMessageRepository.countByGroupIdAndSenderIdNotAndDeletedAtIsNull(group.getId(), member.getUserId())
+                : groupMessageRepository.countByGroupIdAndSenderIdNotAndDeletedAtIsNullAndSentAtAfter(
+                    group.getId(),
+                    member.getUserId(),
+                    member.getLastReadAt()
+                );
+            groupHotCacheService.setUnreadCount(member.getUserId(), group.getId(), unreadCount);
+        }
+        long mentionUnreadCount = groupHotCacheService.getMentionUnreadCount(member.getUserId(), group.getId());
+        if (mentionUnreadCount < 0L) {
+            mentionUnreadCount = member.getLastReadAt() == null
+                ? groupMessageRepository.countUnreadMentions(group.getId(), member.getUserId())
+                : groupMessageRepository.countUnreadMentionsAfter(group.getId(), member.getUserId(), member.getLastReadAt());
+            groupHotCacheService.setMentionUnreadCount(member.getUserId(), group.getId(), mentionUnreadCount);
+        }
+        Boolean noticeUnread = groupHotCacheService.getNoticeUnread(member.getUserId(), group.getId());
+        if (noticeUnread == null) {
+            noticeUnread = group.getNoticeUpdatedAt() != null
+                && (member.getNoticeReadAt() == null || member.getNoticeReadAt().isBefore(group.getNoticeUpdatedAt()));
+            groupHotCacheService.setNoticeUnread(member.getUserId(), group.getId(), noticeUnread);
+        }
+        warmGroupSummaryCache(member.getUserId(), group.getId());
         return new GroupResponse(group, memberCount, unreadCount, mentionUnreadCount, noticeUnread);
     }
 
@@ -846,5 +884,31 @@ public class GroupServiceImpl implements GroupService {
                 mentionMap.getOrDefault(message.getId(), List.of())
             ))
             .toList();
+    }
+
+    private void warmGroupSummaryCache(Long userId, Long groupId) {
+        if (groupHotCacheService.getSummary(userId, groupId).isPresent()) {
+            return;
+        }
+        groupMessageRepository.findFirstByGroupIdAndDeletedAtIsNullOrderBySentAtDesc(groupId)
+            .ifPresent(message -> groupHotCacheService.cacheSummary(
+                userId,
+                groupId,
+                message.getId(),
+                message.getMessageType(),
+                buildGroupMessagePreview(message),
+                message.getSentAt()
+            ));
+    }
+
+    private String buildGroupMessagePreview(GroupMessage message) {
+        if (message.getRecallStatus() != null && message.getRecallStatus() == GroupMessage.RECALL_RECALLED) {
+            return "Message recalled";
+        }
+        if (!"text".equals(message.getMessageType())) {
+            return "[" + message.getMessageType() + "]";
+        }
+        String content = message.getContent() == null ? "" : message.getContent();
+        return content.length() > 80 ? content.substring(0, 80) + "..." : content;
     }
 }

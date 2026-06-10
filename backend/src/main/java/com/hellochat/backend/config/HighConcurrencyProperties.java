@@ -10,6 +10,8 @@ public class HighConcurrencyProperties {
     private boolean websocketKafkaEnabled = false;
     private String websocketDispatchTopic = "hello-chat-websocket-dispatch";
     private String chatPushTopic = "hello-chat-chat-push";
+    private String groupPushTopic = "hello-chat-group-push";
+    private long kafkaEventDedupTtlSeconds = 600L;
     private int eventCorePoolSize = 4;
     private int eventMaxPoolSize = 16;
     private int eventQueueCapacity = 1000;
@@ -52,6 +54,22 @@ public class HighConcurrencyProperties {
 
     public void setChatPushTopic(String chatPushTopic) {
         this.chatPushTopic = chatPushTopic;
+    }
+
+    public String getGroupPushTopic() {
+        return groupPushTopic;
+    }
+
+    public void setGroupPushTopic(String groupPushTopic) {
+        this.groupPushTopic = groupPushTopic;
+    }
+
+    public long getKafkaEventDedupTtlSeconds() {
+        return kafkaEventDedupTtlSeconds;
+    }
+
+    public void setKafkaEventDedupTtlSeconds(long kafkaEventDedupTtlSeconds) {
+        this.kafkaEventDedupTtlSeconds = kafkaEventDedupTtlSeconds;
     }
 
     public int getEventCorePoolSize() {

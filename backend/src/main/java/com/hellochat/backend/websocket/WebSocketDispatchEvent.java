@@ -2,6 +2,7 @@ package com.hellochat.backend.websocket;
 
 public class WebSocketDispatchEvent {
 
+    private String eventId;
     private Long userId;
     private String eventType;
     private String payload;
@@ -10,11 +11,20 @@ public class WebSocketDispatchEvent {
     public WebSocketDispatchEvent() {
     }
 
-    public WebSocketDispatchEvent(Long userId, String eventType, String payload, String sourceNodeId) {
+    public WebSocketDispatchEvent(String eventId, Long userId, String eventType, String payload, String sourceNodeId) {
+        this.eventId = eventId;
         this.userId = userId;
         this.eventType = eventType;
         this.payload = payload;
         this.sourceNodeId = sourceNodeId;
+    }
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
     }
 
     public Long getUserId() {

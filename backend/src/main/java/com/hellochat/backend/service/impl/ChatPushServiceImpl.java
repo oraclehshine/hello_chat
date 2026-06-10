@@ -4,6 +4,7 @@ import com.hellochat.backend.config.HighConcurrencyProperties;
 import com.hellochat.backend.dto.PrivateMessageResponse;
 import com.hellochat.backend.service.ChatPushService;
 import com.hellochat.backend.service.event.ChatPushEvent;
+import java.util.UUID;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ public class ChatPushServiceImpl implements ChatPushService {
     @Override
     public void pushNewMessage(Long chatId, Long senderId, PrivateMessageResponse message) {
         ChatPushEvent event = new ChatPushEvent();
+        event.setEventId(UUID.randomUUID().toString());
         event.setType(ChatPushEvent.TYPE_NEW_MESSAGE);
         event.setChatId(chatId);
         event.setActorUserId(senderId);
@@ -34,6 +36,7 @@ public class ChatPushServiceImpl implements ChatPushService {
     @Override
     public void pushMessageUpdated(Long chatId, Long senderId, Long messageId, String eventType) {
         ChatPushEvent event = new ChatPushEvent();
+        event.setEventId(UUID.randomUUID().toString());
         event.setType(ChatPushEvent.TYPE_MESSAGE_UPDATED);
         event.setChatId(chatId);
         event.setActorUserId(senderId);
@@ -45,6 +48,7 @@ public class ChatPushServiceImpl implements ChatPushService {
     @Override
     public void pushReadReceipt(Long chatId, Long userId, Long lastReadMessageId) {
         ChatPushEvent event = new ChatPushEvent();
+        event.setEventId(UUID.randomUUID().toString());
         event.setType(ChatPushEvent.TYPE_READ_RECEIPT);
         event.setChatId(chatId);
         event.setActorUserId(userId);
@@ -55,6 +59,7 @@ public class ChatPushServiceImpl implements ChatPushService {
     @Override
     public void pushTypingStatus(Long chatId, Long userId, boolean typing) {
         ChatPushEvent event = new ChatPushEvent();
+        event.setEventId(UUID.randomUUID().toString());
         event.setType(ChatPushEvent.TYPE_TYPING_STATUS);
         event.setChatId(chatId);
         event.setActorUserId(userId);
